@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later OR Commercial
+// Copyright (c) 2026 Codesense
+
 /**
  * Base64 encoding and decoding utilities.
  *
