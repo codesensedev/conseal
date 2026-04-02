@@ -29,10 +29,11 @@ export async function recoverWithMnemonic(mnemonic: string): Promise<CryptoKey> 
     throw new Error('Invalid mnemonic: phrase does not pass BIP-39 checksum validation')
   }
   // mnemonicToEntropy returns the raw entropy bytes — 32 bytes for a 24-word phrase
-  const entropy = mnemonicToEntropy(mnemonic, wordlist)
+  // .slice() creates a copy backed by a plain ArrayBuffer (required by SubtleCrypto)
+  const entropy = mnemonicToEntropy(mnemonic, wordlist).slice()
   return crypto.subtle.importKey(
     'raw',
-    entropy as BufferSource,
+    entropy,
     { name: 'AES-GCM', length: 256 },
     false, // extractable: false — key is for use only, never exported
     ['encrypt', 'decrypt']

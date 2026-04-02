@@ -69,4 +69,15 @@ describe('encodeEnvelope / decodeEnvelope', () => {
   it('decodeEnvelope throws on invalid JSON', () => {
     expect(() => decodeEnvelope('not json')).toThrow(SyntaxError)
   })
+
+  it('decodeEnvelope throws on missing fields', () => {
+    expect(() => decodeEnvelope('{}')).toThrow(TypeError)
+    expect(() => decodeEnvelope('{"ciphertext":"abc"}')).toThrow(TypeError)
+    expect(() => decodeEnvelope('{"ciphertext":"a","iv":"b","wrappedKey":"c"}')).toThrow(TypeError)
+  })
+
+  it('decodeEnvelope throws on non-string fields', () => {
+    expect(() => decodeEnvelope('{"ciphertext":123,"iv":"b","wrappedKey":"c","salt":"d"}')).toThrow(TypeError)
+    expect(() => decodeEnvelope('{"ciphertext":"a","iv":null,"wrappedKey":"c","salt":"d"}')).toThrow(TypeError)
+  })
 })

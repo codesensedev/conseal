@@ -25,7 +25,7 @@ export async function importPublicKeyFromJwk(
       ? { name: 'ECDH', namedCurve: 'P-256' }
       : { name: 'ECDSA', namedCurve: 'P-256' }
 
-  // Public keys imported for verification/key-agreement don't need key usage flags
+  // ECDSA public keys need 'verify'; ECDH public keys need no usages (deriveBits is on the private key)
   const usages: KeyUsage[] = algorithm === 'ECDSA' ? ['verify'] : []
 
   return crypto.subtle.importKey('jwk', jwk, algorithmParams, true, usages)

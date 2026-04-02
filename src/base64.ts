@@ -21,9 +21,9 @@ export function toBase64(buf: ArrayBuffer | Uint8Array): string {
   return btoa(binary)
 }
 
-/** Decodes a standard base64 string to an ArrayBuffer. */
-export function fromBase64(b64: string): ArrayBuffer {
-  return Uint8Array.from(atob(b64), c => c.charCodeAt(0)).buffer
+/** Decodes a standard base64 string to a Uint8Array. */
+export function fromBase64(b64: string): Uint8Array {
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0))
 }
 
 /**
@@ -35,10 +35,7 @@ export function toBase64Url(buf: ArrayBuffer | Uint8Array): string {
   return toBase64(buf).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
 }
 
-/**
- * Decodes a base64url string to a Uint8Array.
- * Returns Uint8Array (not ArrayBuffer) to match JWK coordinate usage.
- */
+/** Decodes a base64url string to a Uint8Array. */
 export function fromBase64Url(b64url: string): Uint8Array {
   const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/')
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0))

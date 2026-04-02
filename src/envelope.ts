@@ -67,13 +67,21 @@ export function encodeEnvelope(envelope: SealedEnvelope): string {
 /**
  * Deserialises a JSON string produced by encodeEnvelope() back to a SealedEnvelope.
  * Throws SyntaxError if the string is not valid JSON.
+ * Throws TypeError if required fields are missing or not strings.
  */
 export function decodeEnvelope(json: string): SealedEnvelope {
-  const p = JSON.parse(json) as { ciphertext: string; iv: string; wrappedKey: string; salt: string }
+  const p = JSON.parse(json) as Record<string, unknown>
+  const required = ['ciphertext', 'iv', 'wrappedKey', 'salt'] as const
+  for (const field of required) {
+    if (typeof p[field] !== 'string') {
+      throw new TypeError(`Invalid envelope: missing or invalid '${field}' field`)
+    }
+  }
+  const validated = p as { ciphertext: string; iv: string; wrappedKey: string; salt: string }
   return {
-    ciphertext: fromBase64(p.ciphertext),
-    iv:         new Uint8Array(fromBase64(p.iv)),
-    wrappedKey: fromBase64(p.wrappedKey),
-    salt:       new Uint8Array(fromBase64(p.salt)),
+    ciphertext: fromBase64(validated.ciphertext).buffer as ArrayBuffer,
+    iv:         fromBase64(validated.iv),
+    wrappedKey: fromBase64(validated.wrappedKey).buffer as ArrayBuffer,
+    salt:       fromBase64(validated.salt),
   }
 }

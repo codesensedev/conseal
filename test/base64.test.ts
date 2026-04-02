@@ -19,8 +19,13 @@ describe('toBase64 / fromBase64', () => {
   })
 
   it('decodes a known base64 string', () => {
-    const result = new Uint8Array(fromBase64('SGVsbG8='))
+    const result = fromBase64('SGVsbG8=')
     expect(Array.from(result)).toEqual([72, 101, 108, 108, 111])
+  })
+
+  it('fromBase64 returns a Uint8Array', () => {
+    const result = fromBase64('SGVsbG8=')
+    expect(result).toBeInstanceOf(Uint8Array)
   })
 
   it('handles empty input', () => {
