@@ -30,9 +30,7 @@
     "happy-dom": "^20.0.0",
     "tsup": "^8.0.0",
     "typescript": "^6.0.0",
-    "vitest": "^4.0.0"
-  },
-  "dependencies": {
+    "vitest": "^4.0.0",
     "@scure/bip39": "^2.0.0"
   }
 }
