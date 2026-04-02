@@ -43,6 +43,15 @@ describe('wrapKey / unwrapKey', () => {
     const recovered = await unwrapKey('pass', wrappedKey, salt)
     expect(recovered.extractable).toBe(false)
   }, 10_000)
+
+  it('throws when wrapping a non-extractable key', async () => {
+    const nonExtractable = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      false,
+      ['encrypt', 'decrypt']
+    )
+    await expect(wrapKey('pass', nonExtractable)).rejects.toThrow()
+  })
 })
 
 describe('rekey', () => {
@@ -65,4 +74,10 @@ describe('rekey', () => {
     // Old passphrase must fail on the new wrapped key
     await expect(unwrapKey('old-pass', newWrapped, newSalt)).rejects.toThrow()
   }, 30_000)
+
+  it('throws when old passphrase is wrong', async () => {
+    const aek = await makeAEK()
+    const { wrappedKey, salt } = await wrapKey('correct', aek)
+    await expect(rekey('wrong', 'new-pass', wrappedKey, salt)).rejects.toThrow()
+  }, 15_000)
 })
