@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seal, unseal } from '../src/aes'
+import { seal, unseal, generateAesKey, importAesKey } from '../src/aes'
 
 /** Generates a fresh AES-256-GCM CryptoKey for testing. */
 async function makeKey(): Promise<CryptoKey> {
@@ -67,5 +67,68 @@ describe('seal / unseal', () => {
     const { ciphertext } = await seal(key, plaintext)
     const wrongIv = new Uint8Array(8) // 8 bytes instead of 12
     await expect(unseal(key, ciphertext, wrongIv)).rejects.toThrow()
+  })
+})
+
+describe('generateAesKey', () => {
+  it('returns a CryptoKey with correct algorithm', async () => {
+    const key = await generateAesKey()
+    expect(key.algorithm.name).toBe('AES-GCM')
+    expect((key.algorithm as AesKeyAlgorithm).length).toBe(256)
+  })
+
+  it('is non-extractable by default', async () => {
+    const key = await generateAesKey()
+    expect(key.extractable).toBe(false)
+  })
+
+  it('is extractable when requested', async () => {
+    const key = await generateAesKey(true)
+    expect(key.extractable).toBe(true)
+  })
+
+  it('can be used to seal and unseal', async () => {
+    const key = await generateAesKey()
+    const plaintext = new TextEncoder().encode('test').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(key, plaintext)
+    const result = await unseal(key, ciphertext, iv)
+    expect(new TextDecoder().decode(result)).toBe('test')
+  })
+})
+
+describe('importAesKey', () => {
+  it('imports 32 raw bytes as an AES-GCM key', async () => {
+    const raw = crypto.getRandomValues(new Uint8Array(32))
+    const key = await importAesKey(raw)
+    expect(key.algorithm.name).toBe('AES-GCM')
+    expect((key.algorithm as AesKeyAlgorithm).length).toBe(256)
+  })
+
+  it('is non-extractable by default', async () => {
+    const raw = crypto.getRandomValues(new Uint8Array(32))
+    const key = await importAesKey(raw)
+    expect(key.extractable).toBe(false)
+  })
+
+  it('is extractable when requested', async () => {
+    const raw = crypto.getRandomValues(new Uint8Array(32))
+    const key = await importAesKey(raw, true)
+    expect(key.extractable).toBe(true)
+  })
+
+  it('produces the same key from the same raw bytes', async () => {
+    const raw = new Uint8Array(32).fill(0xab)
+    const key1 = await importAesKey(raw)
+    const key2 = await importAesKey(raw)
+    const plaintext = new TextEncoder().encode('deterministic').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(key1, plaintext)
+    const result = await unseal(key2, ciphertext, iv)
+    expect(new TextDecoder().decode(result)).toBe('deterministic')
+  })
+
+  it('accepts ArrayBuffer input', async () => {
+    const raw = crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer
+    const key = await importAesKey(raw)
+    expect(key.algorithm.name).toBe('AES-GCM')
   })
 })

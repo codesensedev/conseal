@@ -9,7 +9,7 @@
  */
 
 // AES-256-GCM symmetric encryption
-export { seal, unseal } from './aes'
+export { seal, unseal, generateAesKey, importAesKey } from './aes'
 
 // PBKDF2 passphrase-based key wrapping
 export { wrapKey, unwrapKey, rekey } from './pbkdf2'
@@ -33,4 +33,11 @@ export { init, AEK_KEY_ID } from './init'
 export { generateMnemonic, recoverWithMnemonic } from './mnemonic'
 
 // Anonymous one-time delivery
-export { sealDelivery, unsealDelivery } from './delivery'
+export { sealDelivery, unsealDelivery, encodePayload, decodePayload } from './delivery'
+export type { SealedPayload } from './delivery'
+
+// Base64 encoding / decoding
+export { toBase64, fromBase64, toBase64Url, fromBase64Url } from './base64'
+
+// SHA-256 digest
+export { digest } from './digest'

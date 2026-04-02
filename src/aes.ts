@@ -32,3 +32,29 @@ export async function unseal(
   }
   return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource, tagLength: 128 }, key, ciphertext)
 }
+
+/**
+ * Generates a random AES-256-GCM CryptoKey.
+ * Pass extractable: true when the key must be wrapped before storage (e.g. via wrapKey).
+ */
+export async function generateAesKey(extractable = false): Promise<CryptoKey> {
+  return crypto.subtle.generateKey(
+    { name: 'AES-GCM', length: 256 },
+    extractable,
+    ['encrypt', 'decrypt']
+  )
+}
+
+/**
+ * Imports raw key bytes as an AES-256-GCM CryptoKey.
+ * Pass extractable: true when the key must be wrapped before storage (e.g. via wrapKey).
+ */
+export async function importAesKey(raw: ArrayBuffer | Uint8Array, extractable = false): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    raw as BufferSource,
+    { name: 'AES-GCM', length: 256 },
+    extractable,
+    ['encrypt', 'decrypt']
+  )
+}

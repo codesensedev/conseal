@@ -16,6 +16,7 @@
 
 import { seal, unseal } from './aes'
 import { wrapKey, unwrapKey } from './pbkdf2'
+import { toBase64, fromBase64 } from './base64'
 
 /** Encrypts plaintext for anonymous delivery protected by a passcode. */
 export async function sealDelivery(
@@ -43,4 +44,39 @@ export async function unsealDelivery(
 ): Promise<ArrayBuffer> {
   const dek = await unwrapKey(passcode, wrappedKey, salt)
   return unseal(dek, ciphertext, iv)
+}
+
+/** The fields produced by sealDelivery(), ready for JSON serialisation. */
+export interface SealedPayload {
+  ciphertext: ArrayBuffer
+  iv: Uint8Array
+  wrappedKey: ArrayBuffer
+  salt: Uint8Array
+}
+
+/**
+ * Serialises a SealedPayload to a JSON string.
+ * Each binary field is base64-encoded. Safe to store server-side or pass over text channels.
+ */
+export function encodePayload(payload: SealedPayload): string {
+  return JSON.stringify({
+    ciphertext: toBase64(payload.ciphertext),
+    iv:         toBase64(payload.iv),
+    wrappedKey: toBase64(payload.wrappedKey),
+    salt:       toBase64(payload.salt),
+  }, null, 2)
+}
+
+/**
+ * Deserialises a JSON string produced by encodePayload() back to binary fields.
+ * Throws SyntaxError if the string is not valid JSON.
+ */
+export function decodePayload(json: string): SealedPayload {
+  const p = JSON.parse(json) as { ciphertext: string; iv: string; wrappedKey: string; salt: string }
+  return {
+    ciphertext: fromBase64(p.ciphertext),
+    iv:         new Uint8Array(fromBase64(p.iv)),
+    wrappedKey: fromBase64(p.wrappedKey),
+    salt:       new Uint8Array(fromBase64(p.salt)),
+  }
 }
