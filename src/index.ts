@@ -16,7 +16,7 @@ export { seal, unseal, generateAesKey, importAesKey } from './aes'
 export { wrapKey, unwrapKey, rekey } from './pbkdf2'
 
 // ECDH P-256 message encryption
-export { generateECDHKeyPair, sealMessage, unsealMessage } from './ecdh'
+export { sealMessage, unsealMessage, generateECDHKeyPair } from './ecdh'
 
 // ECDSA P-256 signing
 export { generateECDSAKeyPair, sign, verify } from './ecdsa'
@@ -30,9 +30,9 @@ export { init, AEK_KEY_ID } from './init'
 // BIP-39 mnemonic recovery
 export { generateMnemonic, recoverWithMnemonic } from './mnemonic'
 
-// Anonymous one-time delivery
-export { sealDelivery, unsealDelivery, encodePayload, decodePayload } from './delivery'
-export type { SealedPayload } from './delivery'
+// Passcode-protected envelope encryption
+export { sealEnvelope, unsealEnvelope, encodeEnvelope, decodeEnvelope } from './envelope'
+export type { SealedEnvelope } from './envelope'
 
 // Base64 encoding / decoding
 export { toBase64, fromBase64, toBase64Url, fromBase64Url } from './base64'
