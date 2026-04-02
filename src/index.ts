@@ -4,6 +4,7 @@
  * Import everything from 'conseal':
  *
  *   import { seal, unseal, wrapKey, init, sealMessage, ... } from 'conseal'
+ *   import * as storage from 'conseal/storage'
  *
  * See docs/usage/ for per-function examples.
  */
@@ -22,9 +23,6 @@ export { generateECDSAKeyPair, sign, verify } from './ecdsa'
 
 // JWK public key serialisation
 export { exportPublicKeyAsJwk, importPublicKeyFromJwk } from './jwk'
-
-// IndexedDB key storage
-export { saveKey, loadKey, deleteKey } from './storage'
 
 // New device initialisation
 export { init, AEK_KEY_ID } from './init'

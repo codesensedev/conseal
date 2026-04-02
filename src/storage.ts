@@ -28,13 +28,13 @@ function openDb(): Promise<IDBDatabase> {
   })
 }
 
-/** Persists a CryptoKey to IndexedDB under the given id. Overwrites if id exists. */
-export async function saveKey(id: string, key: CryptoKey): Promise<void> {
+/** Persists a CryptoKey to IndexedDB under the given name. Overwrites if name exists. */
+export async function save(name: string, key: CryptoKey): Promise<void> {
   const db = await openDb()
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite')
-      tx.objectStore(STORE).put(key, id)
+      tx.objectStore(STORE).put(key, name)
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })
@@ -43,13 +43,13 @@ export async function saveKey(id: string, key: CryptoKey): Promise<void> {
   }
 }
 
-/** Loads a CryptoKey from IndexedDB. Returns null if the id is not found. */
-export async function loadKey(id: string): Promise<CryptoKey | null> {
+/** Loads a CryptoKey from IndexedDB. Returns null if the name is not found. */
+export async function load(name: string): Promise<CryptoKey | null> {
   const db = await openDb()
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readonly')
-      const req = tx.objectStore(STORE).get(id)
+      const req = tx.objectStore(STORE).get(name)
       let result: CryptoKey | null = null
       req.onsuccess = () => {
         result = (req.result as CryptoKey | undefined) ?? null
@@ -62,13 +62,13 @@ export async function loadKey(id: string): Promise<CryptoKey | null> {
   }
 }
 
-/** Removes a CryptoKey from IndexedDB. No-op if the id does not exist. */
-export async function deleteKey(id: string): Promise<void> {
+/** Removes a CryptoKey from IndexedDB. No-op if the name does not exist. */
+export async function remove(name: string): Promise<void> {
   const db = await openDb()
   try {
     return await new Promise((resolve, reject) => {
       const tx = db.transaction(STORE, 'readwrite')
-      tx.objectStore(STORE).delete(id)
+      tx.objectStore(STORE).delete(name)
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })

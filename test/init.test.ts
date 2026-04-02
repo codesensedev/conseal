@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { init, AEK_KEY_ID } from '../src/init'
 import { wrapKey } from '../src/pbkdf2'
-import { loadKey } from '../src/storage'
+import { load } from '../src/storage'
 
 beforeEach(async () => {
   await new Promise<void>((resolve, reject) => {
@@ -25,7 +25,7 @@ describe('init', () => {
     await init(wrappedKey, salt, 'my-passphrase')
 
     // AEK should now be in IndexedDB
-    const stored = await loadKey(AEK_KEY_ID)
+    const stored = await load(AEK_KEY_ID)
     expect(stored).not.toBeNull()
     expect(stored!.type).toBe('secret')
   }, 15_000)
