@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>conseal — Browser-side zero-knowledge cryptography</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@codesense/relayout@0.1.5/dist/css/relayout.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;700;900&display=swap">
+  <style>
+    /* ── Tokens ───────────────────────────────────────────────── */
+    :root {
+      --rl-radius-default: 0.5rem;
+
+      --color-bg:           #0B1F3A;
+      --color-surface:      #0e2546;
+      --color-surface-2:    #112d52;
+      --color-border:       #1c3a5e;
+      --color-accent:       #C8D0DC;
+      --color-accent-dim:   rgba(200,208,220,0.18);
+      --color-accent-glow:  rgba(200,208,220,0.07);
+      --color-text:         #dde5f0;
+      --color-muted:        #565b61;
+      --color-green:        #4ade80;
+      --color-red:          #f87171;
+      --color-code-bg:      #060f1e;
+      --color-code-text:    #a8c4e8;
+      --color-code-bright:  #dde5f0;
+      --color-code-yellow:  #fde68a;
+      --color-code-green:   #86efac;
+      --color-code-purple:  #c4b5fd;
+    }
+
+    [data-theme="light"] {
+      --color-bg:           #F2F4F7;
+      --color-surface:      #ffffff;
+      --color-surface-2:    #e6eaf0;
+      --color-border:       #c4cdd8;
+      --color-accent:       #0B1F3A;
+      --color-accent-dim:   rgba(11,31,58,0.15);
+      --color-accent-glow:  rgba(11,31,58,0.06);
+      --color-text:         #0B1F3A;
+      --color-muted:        #4a6282;
+      --color-green:        #16a34a;
+      --color-red:          #dc2626;
+      --color-code-bg:      #e0e5ee;
+      --color-code-text:    #234060;
+      --color-code-bright:  #0B1F3A;
+      --color-code-yellow:  #92400e;
+      --color-code-green:   #166534;
+      --color-code-purple:  #6d28d9;
+    }
+
+    /* ── Reset ────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--color-bg);
+      color: var(--color-text);
+      font-size: 1rem;
+      line-height: 1.6;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    a { color: var(--color-accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ──────────────────────────────────────────────────── */
+    .nav {
+      background: color-mix(in srgb, var(--color-bg) 92%, transparent);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--color-border);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    /* ── Wordmark ─────────────────────────────────────────────── */
+    .wordmark {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 500;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--color-text);
+    }
+    .wordmark-hero {
+      font-size: 1.1rem;
+      font-weight: 500;
+      letter-spacing: 0.32em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo-mark-outer { fill: var(--color-accent); stroke: var(--color-accent); stroke-width: 6; stroke-linejoin: round; }
+    .logo-mark-inner { fill: var(--color-bg);     stroke: var(--color-bg);     stroke-width: 6; stroke-linejoin: round; }
+    .logo-mark-dash  { fill: var(--color-accent); }
+
+    /* ── Hero ─────────────────────────────────────────────────── */
+    .hero {
+      background:
+        radial-gradient(ellipse at 60% 0%,   rgba(200,208,220,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse at 15% 100%, rgba(200,208,220,0.04) 0%, transparent 55%),
+        var(--color-bg);
+      border-bottom: 1px solid var(--color-border);
+    }
+    [data-theme="light"] .hero {
+      background:
+        radial-gradient(ellipse at 60% 0%,   rgba(11,31,58,0.05) 0%, transparent 60%),
+        radial-gradient(ellipse at 15% 100%, rgba(11,31,58,0.03) 0%, transparent 55%),
+        var(--color-bg);
+    }
+
+    .hero-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--color-accent-glow);
+      border: 1px solid var(--color-accent-dim);
+      color: var(--color-accent);
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.85rem;
+      border-radius: 99px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--color-muted);
+      max-width: 34rem;
+    }
+
+    /* ── Install pill ─────────────────────────────────────────── */
+    .install-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 0.65rem 1.1rem;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.9rem;
+      color: var(--color-code-text);
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .install-pill:hover { border-color: var(--color-accent-dim); text-decoration: none; }
+    .install-pill .prefix { color: var(--color-muted); }
+    .install-pill .cmd { color: var(--color-code-bright); }
+    .copy-icon { font-size: 0.85rem; color: var(--color-muted); }
+
+    /* ── Buttons ──────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.65rem 1.4rem;
+      border-radius: 0.5rem;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      letter-spacing: 0.02em;
+    }
+    .btn:hover { opacity: 0.85; transform: translateY(-1px); text-decoration: none; }
+    .btn-primary { background: var(--color-accent); color: var(--color-bg); }
+    .btn-ghost { background: transparent; color: var(--color-text); border: 1px solid var(--color-border); }
+
+    .theme-toggle {
+      width: 2rem;
+      height: 2rem;
+      border-radius: 50%;
+      border: 1px solid var(--color-border);
+      background: transparent;
+      color: var(--color-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      transition: border-color 0.2s, color 0.2s;
+      flex-shrink: 0;
+    }
+    .theme-toggle:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+    /* ── Sections ─────────────────────────────────────────────── */
+    .section { border-bottom: 1px solid var(--color-border); }
+
+    .section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--color-accent);
+    }
+
+    .section-title {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .section-sub {
+      color: var(--color-muted);
+      font-size: 1.05rem;
+      max-width: 36rem;
+    }
+
+    /* ── Cards ────────────────────────────────────────────────── */
+    .card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: 0.75rem;
+      transition: border-color 0.2s;
+    }
+    .card:hover { border-color: var(--color-accent-dim); }
+
+    .card-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      background: var(--color-accent-glow);
+      border: 1px solid var(--color-accent-dim);
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    /* ── Code block ───────────────────────────────────────────── */
+    .code-block {
+      background: var(--color-code-bg);
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.82rem;
+      line-height: 1.7;
+      color: var(--color-code-text);
+      overflow-x: auto;
+      transition: background 0.2s, color 0.2s;
+    }
+    .code-block .dim    { color: var(--color-muted); }
+    .code-block .bright { color: var(--color-code-bright); }
+    .code-block .yellow { color: var(--color-code-yellow); }
+    .code-block .green  { color: var(--color-code-green); }
+    .code-block .purple { color: var(--color-code-purple); }
+
+    /* ── API table ────────────────────────────────────────────── */
+    .api-table { width: 100%; border-collapse: collapse; }
+    .api-table th {
+      text-align: left;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.07em;
+      text-transform: uppercase;
+      color: var(--color-muted);
+      padding: 0.65rem 1rem;
+      border-bottom: 1px solid var(--color-border);
+    }
+    .api-table td {
+      padding: 0.8rem 1rem;
+      border-bottom: 1px solid var(--color-border);
+      font-size: 0.9rem;
+      vertical-align: top;
+    }
+    .api-table tr:last-child td { border-bottom: none; }
+    .api-table .fn {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.8rem;
+      color: var(--color-code-yellow);
+      white-space: nowrap;
+    }
+    .api-table .desc { color: var(--color-muted); font-size: 0.875rem; }
+    .api-table .mod {
+      font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+      font-size: 0.72rem;
+      color: var(--color-code-purple, #c4b5fd);
+    }
+
+    /* ── Badge ────────────────────────────────────────────────── */
+    .badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; padding: 0.2rem 0.55rem; border-radius: 99px; }
+    .badge-accent { background: var(--color-accent-glow); color: var(--color-accent); border: 1px solid var(--color-accent-dim); }
+    .badge-muted  { background: rgba(100,116,139,0.1); color: var(--color-muted); border: 1px solid rgba(100,116,139,0.2); }
+    .badge-green  { background: rgba(74,222,128,0.1); color: var(--color-green); border: 1px solid rgba(74,222,128,0.2); }
+
+    /* ── Seal mark ────────────────────────────────────────────── */
+    .seal-mark {
+      width: 3.5rem;
+      height: 3.5rem;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 12px rgba(200,208,220,0.25));
+    }
+    [data-theme="light"] .seal-mark {
+      filter: drop-shadow(0 0 8px rgba(11,31,58,0.2));
+    }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    footer {
+      background: var(--color-surface);
+      border-top: 1px solid var(--color-border);
+      color: var(--color-muted);
+      font-size: 0.875rem;
+    }
+
+    /* ── Copied toast ─────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 1.5rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(1rem);
+      background: var(--color-surface-2);
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      font-size: 0.82rem;
+      color: var(--color-green);
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body class="rl-stack rl-gap-0">
+
+  <div class="toast" id="toast">Copied to clipboard</div>
+
+  <!-- ── Nav ──────────────────────────────────────────────────── -->
+  <header class="nav">
+    <div class="rl-split rl-padding-m rl-width-2xl" style="margin: 0 auto;">
+      <div class="rl-cluster rl-gap-l rl-align-center">
+        <div class="wordmark">
+          <svg width="22" height="22" viewBox="85 75 110 110" xmlns="http://www.w3.org/2000/svg">
+            <polygon class="logo-mark-outer" points="189.9,150.7 160.7,179.9 119.3,179.9 90.1,150.7 90.1,109.3 119.3,80.1 160.7,80.1 189.9,109.3"/>
+            <polygon class="logo-mark-inner" points="180.9,146.9 156.9,170.9 123.1,170.9 99.1,146.9 99.1,113.1 123.1,89.1 156.9,89.1 180.9,113.1"/>
+            <rect class="logo-mark-dash" x="131" y="106" width="18" height="48" rx="9"/>
+          </svg>
+          CONSEAL
+        </div>
+        <nav class="rl-cluster rl-gap-l" style="font-size: 0.875rem; color: var(--color-muted);">
+          <a href="#install"   style="color: inherit;">Install</a>
+          <a href="#api"       style="color: inherit;">API</a>
+          <a href="#concepts"  style="color: inherit;">Concepts</a>
+          <a href="demo.html" style="color: inherit;">Demo</a>
+        </nav>
+      </div>
+      <div class="rl-cluster rl-gap-m rl-align-center">
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark">☀</button>
+        <a href="https://github.com/codesense/conseal" class="btn btn-ghost" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">GitHub</a>
+        <a href="demo.html" class="btn btn-primary" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">Live demo</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Hero ─────────────────────────────────────────────────── -->
+  <section class="hero section">
+    <div class="rl-stack rl-gap-xl rl-align-center rl-padding-2xl rl-width-xl" style="margin: 0 auto; text-align: center; padding-top: 5rem; padding-bottom: 5rem;">
+
+      <div class="wordmark-hero">
+        <svg width="52" height="52" viewBox="85 75 110 110" xmlns="http://www.w3.org/2000/svg">
+          <polygon class="logo-mark-outer" points="189.9,150.7 160.7,179.9 119.3,179.9 90.1,150.7 90.1,109.3 119.3,80.1 160.7,80.1 189.9,109.3"/>
+          <polygon class="logo-mark-inner" points="180.9,146.9 156.9,170.9 123.1,170.9 99.1,146.9 99.1,113.1 123.1,89.1 156.9,89.1 180.9,113.1"/>
+          <rect class="logo-mark-dash" x="131" y="106" width="18" height="48" rx="9"/>
+        </svg>
+        CONSEAL
+      </div>
+
+      <span class="hero-eyebrow">v0.1.0 &nbsp;·&nbsp; TypeScript &nbsp;·&nbsp; Web Crypto API &nbsp;·&nbsp; Zero dependencies</span>
+
+      <div class="rl-stack rl-gap-l rl-align-center">
+        <h1>Browser-side zero-knowledge<br>cryptography.</h1>
+        <p class="hero-sub">AES-256-GCM, ECDH, ECDSA, PBKDF2, and BIP-39 mnemonic recovery — all built on the native Web Crypto API. No native addons. No heavy dependencies. Works in any modern browser or Node 18+.</p>
+      </div>
+
+      <button class="install-pill" onclick="copyInstall()" title="Copy to clipboard">
+        <span class="prefix">$</span>
+        <span class="cmd">npm install conseal</span>
+        <span class="copy-icon">⎘</span>
+      </button>
+
+      <div class="rl-cluster rl-gap-m rl-justify-center">
+        <a href="demo.html" class="btn btn-primary">Try the live demo</a>
+        <a href="#install" class="btn btn-ghost">Quick start</a>
+      </div>
+
+      <p style="font-size: 0.8rem; color: var(--color-muted);">Open-source &nbsp;·&nbsp; Auditable &nbsp;·&nbsp; No server required &nbsp;·&nbsp; ESM only</p>
+    </div>
+  </section>
+
+  <!-- ── Why ───────────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="rl-stack rl-gap-xl rl-padding-2xl rl-width-2xl" style="margin: 0 auto;">
+      <div class="rl-stack rl-gap-m">
+        <span class="section-label">Design principles</span>
+        <h2 class="section-title">Everything your app needs<br>to encrypt client-side. Nothing else.</h2>
+      </div>
+      <div class="rl-grid rl-grid-fit-l rl-gap-m">
+
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="card-icon">🔒</div>
+          <div class="rl-stack rl-gap-s">
+            <strong>Zero-knowledge by design</strong>
+            <p style="font-size: 0.875rem; color: var(--color-muted);">Keys never leave the browser. Plaintext never touches your server. The architecture enforces privacy — it is not a policy you can accidentally break.</p>
+          </div>
+        </div>
+
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="card-icon">⚙️</div>
+          <div class="rl-stack rl-gap-s">
+            <strong>Web Crypto native</strong>
+            <p style="font-size: 0.875rem; color: var(--color-muted);">Every cipher is a thin wrapper around <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">SubtleCrypto</code>. Hardware-accelerated, zero-dependency, same API in browser and Node 18+.</p>
+          </div>
+        </div>
+
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="card-icon">🔑</div>
+          <div class="rl-stack rl-gap-s">
+            <strong>Key management built in</strong>
+            <p style="font-size: 0.875rem; color: var(--color-muted);">Generate, wrap, store, and recover keys. PBKDF2 passphrase wrapping, IndexedDB storage, and BIP-39 mnemonic recovery form a complete lifecycle.</p>
+          </div>
+        </div>
+
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="card-icon">🧾</div>
+          <div class="rl-stack rl-gap-s">
+            <strong>TypeScript first</strong>
+            <p style="font-size: 0.875rem; color: var(--color-muted);">Full typings included. Every function signature is precise — <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">CryptoKey</code>, <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">Uint8Array</code>, <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">SealedEnvelope</code>. No implicit <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">any</code>.</p>
+          </div>
+        </div>
+
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="card-icon">📦</div>
+          <div class="rl-stack rl-gap-s">
+            <strong>Minimal footprint</strong>
+            <p style="font-size: 0.875rem; color: var(--color-muted);">One runtime dependency: <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">@scure/bip39</code> for mnemonic wordlists. Everything else is the platform. No OpenSSL, no polyfills, no wasm blobs.</p>
+          </div>
+        </div>
+
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="card-icon">🔌</div>
+          <div class="rl-stack rl-gap-s">
+            <strong>Composable, not prescriptive</strong>
+            <p style="font-size: 0.875rem; color: var(--color-muted);">Each module is independent and tree-shakeable. Use only what you need. Bring your own storage, your own transport, your own UI.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Quick start ───────────────────────────────────────────── -->
+  <section class="section" id="install">
+    <div class="rl-stack rl-gap-2xl rl-padding-2xl rl-width-2xl" style="margin: 0 auto;">
+      <div class="rl-stack rl-gap-m">
+        <span class="section-label">Quick start</span>
+        <h2 class="section-title">Encrypt in three calls.</h2>
+        <p class="section-sub">Initialise once per device, then seal and unseal data anywhere in your app.</p>
+      </div>
+
+      <div class="rl-grid rl-grid-fit-2xl rl-gap-l">
+
+        <!-- Step 1 -->
+        <div class="card rl-stack rl-gap-l rl-padding-l">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <div style="width:2rem;height:2rem;background:var(--color-accent);color:var(--color-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;flex-shrink:0;">1</div>
+            <strong>Initialise (once per device)</strong>
+          </div>
+          <div class="code-block rl-padding-l">
+            <div><span class="dim">import</span> * <span class="dim">as</span> <span class="bright">conseal</span> <span class="dim">from</span> <span class="yellow">'conseal'</span></div>
+            <div>&nbsp;</div>
+            <div class="dim">// Generates + persists an AEK in IndexedDB.</div>
+            <div class="dim">// No-op on subsequent calls — idempotent.</div>
+            <div><span class="dim">const</span> { <span class="bright">aek</span> } = <span class="dim">await</span> conseal.<span class="yellow">init</span>()</div>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="card rl-stack rl-gap-l rl-padding-l">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <div style="width:2rem;height:2rem;background:var(--color-accent);color:var(--color-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;flex-shrink:0;">2</div>
+            <strong>Seal &amp; unseal</strong>
+          </div>
+          <div class="code-block rl-padding-l">
+            <div><span class="dim">import</span> * <span class="dim">as</span> <span class="bright">conseal</span> <span class="dim">from</span> <span class="yellow">'conseal'</span></div>
+            <div>&nbsp;</div>
+            <div class="dim">// AES-256-GCM. Returns Uint8Array (IV + ciphertext).</div>
+            <div><span class="dim">const</span> <span class="bright">ct</span> = <span class="dim">await</span> conseal.<span class="yellow">seal</span>(plaintext, aek)</div>
+            <div>&nbsp;</div>
+            <div class="dim">// Decrypts. Throws if tampered.</div>
+            <div><span class="dim">const</span> <span class="bright">pt</span> = <span class="dim">await</span> conseal.<span class="yellow">unseal</span>(ct, aek)</div>
+          </div>
+        </div>
+
+        <!-- Step 3 — envelope (passcode) -->
+        <div class="card rl-stack rl-gap-l rl-padding-l">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <div style="width:2rem;height:2rem;background:var(--color-accent);color:var(--color-bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.8rem;font-weight:800;flex-shrink:0;">3</div>
+            <strong>Share without a shared key</strong>
+          </div>
+          <div class="code-block rl-padding-l">
+            <div><span class="dim">import</span> * <span class="dim">as</span> <span class="bright">conseal</span> <span class="dim">from</span> <span class="yellow">'conseal'</span></div>
+            <div>&nbsp;</div>
+            <div class="dim">// Passcode-protected envelope (PBKDF2 + AES-GCM).</div>
+            <div><span class="dim">const</span> <span class="bright">env</span> = <span class="dim">await</span> conseal.<span class="yellow">sealEnvelope</span>(data, <span class="yellow">'passphrase'</span>)</div>
+            <div>&nbsp;</div>
+            <div class="dim">// Recipient decrypts with the same passphrase.</div>
+            <div><span class="dim">const</span> <span class="bright">plain</span> = <span class="dim">await</span> conseal.<span class="yellow">unsealEnvelope</span>(env, <span class="yellow">'passphrase'</span>)</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── API reference ─────────────────────────────────────────── -->
+  <section class="section" id="api">
+    <div class="rl-stack rl-gap-xl rl-padding-2xl rl-width-2xl" style="margin: 0 auto;">
+      <div class="rl-stack rl-gap-m">
+        <span class="section-label">API</span>
+        <h2 class="section-title">Everything exported from <code style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.01em; font-family: 'SF Mono','Fira Code',monospace; color: var(--color-code-yellow);">conseal</code></h2>
+        <p class="section-sub">All functions are async, return typed values, and throw on authentication failure.</p>
+      </div>
+
+      <div class="rl-stack rl-gap-l">
+
+        <!-- AES -->
+        <div>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+            <span class="section-label">AES-256-GCM — symmetric encryption</span>
+            <span class="badge badge-green">core</span>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table class="api-table">
+              <thead><tr><th>Function</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="fn">seal(data, key)</td><td class="desc">Encrypt a <code>Uint8Array</code> with an AES-GCM key. Returns IV + ciphertext.</td></tr>
+                <tr><td class="fn">unseal(ct, key)</td><td class="desc">Decrypt. Throws <code>DOMException</code> if the ciphertext has been tampered with.</td></tr>
+                <tr><td class="fn">generateAesKey()</td><td class="desc">Generate a fresh extractable AES-256-GCM <code>CryptoKey</code>.</td></tr>
+                <tr><td class="fn">importAesKey(raw)</td><td class="desc">Import 32 raw bytes as an AES-GCM key.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- PBKDF2 -->
+        <div>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+            <span class="section-label">PBKDF2 — passphrase key wrapping</span>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table class="api-table">
+              <thead><tr><th>Function</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="fn">wrapKey(key, passphrase)</td><td class="desc">Derive a wrapping key from a passphrase (PBKDF2 + 310 000 iterations) and encrypt the AES key.</td></tr>
+                <tr><td class="fn">unwrapKey(wrapped, passphrase)</td><td class="desc">Reverse of <code>wrapKey</code>. Throws on wrong passphrase.</td></tr>
+                <tr><td class="fn">rekey(wrapped, old, next)</td><td class="desc">Re-encrypt a wrapped key under a new passphrase without exposing the raw key material.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ECDH -->
+        <div>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+            <span class="section-label">ECDH P-256 — asymmetric message encryption</span>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table class="api-table">
+              <thead><tr><th>Function</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="fn">generateECDHKeyPair()</td><td class="desc">Generate an ECDH P-256 key pair for message encryption.</td></tr>
+                <tr><td class="fn">sealMessage(msg, recipientPub)</td><td class="desc">Encrypt a message for a recipient's public key. Ephemeral ECDH + AES-GCM.</td></tr>
+                <tr><td class="fn">unsealMessage(sealed, privateKey)</td><td class="desc">Decrypt using the recipient's private key.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ECDSA -->
+        <div>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+            <span class="section-label">ECDSA P-256 — signing &amp; verification</span>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table class="api-table">
+              <thead><tr><th>Function</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="fn">generateECDSAKeyPair()</td><td class="desc">Generate an ECDSA P-256 key pair for signing.</td></tr>
+                <tr><td class="fn">sign(data, privateKey)</td><td class="desc">Sign arbitrary bytes. Returns a DER-encoded signature.</td></tr>
+                <tr><td class="fn">verify(data, sig, publicKey)</td><td class="desc">Verify a signature. Returns <code>boolean</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Envelope -->
+        <div>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+            <span class="section-label">Envelope — passcode-protected encryption</span>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table class="api-table">
+              <thead><tr><th>Function</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="fn">sealEnvelope(data, passphrase)</td><td class="desc">Encrypt data under a passphrase. Derives key via PBKDF2, encrypts with AES-GCM. Returns a <code>SealedEnvelope</code>.</td></tr>
+                <tr><td class="fn">unsealEnvelope(env, passphrase)</td><td class="desc">Decrypt a <code>SealedEnvelope</code>. Throws on wrong passphrase.</td></tr>
+                <tr><td class="fn">encodeEnvelope(env)</td><td class="desc">Serialise a <code>SealedEnvelope</code> to a URL-safe Base64 string for transport.</td></tr>
+                <tr><td class="fn">decodeEnvelope(str)</td><td class="desc">Deserialise from a URL-safe Base64 string back to a <code>SealedEnvelope</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- JWK / init / mnemonic / utils -->
+        <div>
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+            <span class="section-label">Key management &amp; utilities</span>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table class="api-table">
+              <thead><tr><th>Function</th><th>Module</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="fn">init()</td><td class="mod">conseal</td><td class="desc">Generate and persist an Account Encryption Key (AEK) to IndexedDB. Idempotent.</td></tr>
+                <tr><td class="fn">exportPublicKeyAsJwk(key)</td><td class="mod">conseal</td><td class="desc">Serialise a public <code>CryptoKey</code> to a JWK object for distribution.</td></tr>
+                <tr><td class="fn">importPublicKeyFromJwk(jwk)</td><td class="mod">conseal</td><td class="desc">Restore a <code>CryptoKey</code> from a JWK object.</td></tr>
+                <tr><td class="fn">generateMnemonic(aek)</td><td class="mod">conseal</td><td class="desc">Derive a BIP-39 mnemonic from an AES key for human-readable backup.</td></tr>
+                <tr><td class="fn">recoverWithMnemonic(phrase)</td><td class="mod">conseal</td><td class="desc">Reconstruct an AES key from a BIP-39 mnemonic and persist it.</td></tr>
+                <tr><td class="fn">digest(data)</td><td class="mod">conseal</td><td class="desc">SHA-256 hash. Returns <code>Uint8Array</code>.</td></tr>
+                <tr><td class="fn">toBase64 / fromBase64</td><td class="mod">conseal</td><td class="desc">Standard Base64 encode / decode.</td></tr>
+                <tr><td class="fn">toBase64Url / fromBase64Url</td><td class="mod">conseal</td><td class="desc">URL-safe Base64 (no <code>+/=</code>) encode / decode.</td></tr>
+                <tr><td class="fn">loadKey / saveKey</td><td class="mod">conseal/storage</td><td class="desc">Read/write a <code>CryptoKey</code> from IndexedDB. Used internally by <code>init()</code>.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Concepts ──────────────────────────────────────────────── -->
+  <section class="section" id="concepts">
+    <div class="rl-padding-2xl rl-width-2xl" style="margin: 0 auto;">
+      <div class="card rl-padding-2xl" style="background: linear-gradient(135deg, var(--color-surface-2), var(--color-surface)); border-color: var(--color-accent-dim);">
+        <div class="rl-flank rl-gap-2xl rl-align-center">
+
+          <div class="rl-stack rl-gap-l">
+            <div class="rl-cluster rl-gap-m rl-align-center">
+              <svg class="seal-mark" viewBox="85 75 110 110" xmlns="http://www.w3.org/2000/svg">
+                <polygon class="logo-mark-outer" points="189.9,150.7 160.7,179.9 119.3,179.9 90.1,150.7 90.1,109.3 119.3,80.1 160.7,80.1 189.9,109.3"/>
+                <polygon class="logo-mark-inner" points="180.9,146.9 156.9,170.9 123.1,170.9 99.1,146.9 99.1,113.1 123.1,89.1 156.9,89.1 180.9,113.1"/>
+                <rect class="logo-mark-dash" x="131" y="106" width="18" height="48" rx="9"/>
+              </svg>
+              <span class="section-label">Key concepts</span>
+            </div>
+
+            <h2 class="section-title" style="font-size: 1.8rem;">AEK, envelopes,<br>and the key lifecycle.</h2>
+
+            <div class="rl-stack rl-gap-m">
+              <div class="rl-stack rl-gap-xs">
+                <strong style="font-size: 0.9rem;">Account Encryption Key (AEK)</strong>
+                <p style="font-size: 0.875rem; color: var(--color-muted);">The root symmetric key for a device. Generated by <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">init()</code>, stored in IndexedDB as a non-exportable <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">CryptoKey</code>. Can be re-exported via mnemonic for cross-device recovery.</p>
+              </div>
+              <div class="rl-stack rl-gap-xs">
+                <strong style="font-size: 0.9rem;">Envelope</strong>
+                <p style="font-size: 0.875rem; color: var(--color-muted);">A self-contained encrypted parcel with embedded salt and IV. Designed for passcode-based sharing where no pre-shared key exists — the passphrase is the only credential.</p>
+              </div>
+              <div class="rl-stack rl-gap-xs">
+                <strong style="font-size: 0.9rem;">ECDH vs Envelope</strong>
+                <p style="font-size: 0.875rem; color: var(--color-muted);"><code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">sealMessage</code> encrypts to a known recipient's public key — ideal for registered users. <code style="font-size: 0.8rem; color: var(--color-code-text); background: var(--color-code-bg); padding: 0.1em 0.3em; border-radius: 3px;">sealEnvelope</code> encrypts to a passphrase — ideal for anonymous or one-time recipients.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="code-block rl-padding-l" style="min-width: 22rem; flex-shrink: 0;">
+            <div class="dim">// ── Full key lifecycle example ───────</div>
+            <div>&nbsp;</div>
+            <div><span class="dim">import</span> * <span class="dim">as</span> <span class="bright">conseal</span> <span class="dim">from</span> <span class="yellow">'conseal'</span></div>
+            <div>&nbsp;</div>
+            <div class="dim">// 1. First run on this device</div>
+            <div><span class="dim">const</span> { <span class="bright">aek</span> } = <span class="dim">await</span> conseal.<span class="yellow">init</span>()</div>
+            <div>&nbsp;</div>
+            <div class="dim">// 2. Back up as a mnemonic phrase</div>
+            <div><span class="dim">const</span> <span class="bright">words</span> = <span class="dim">await</span> conseal.<span class="yellow">generateMnemonic</span>(aek)</div>
+            <div><span class="dim">// → "obscure vapor skate ..."</span></div>
+            <div>&nbsp;</div>
+            <div class="dim">// 3. Wrap for server storage</div>
+            <div><span class="dim">const</span> <span class="bright">blob</span> = <span class="dim">await</span> conseal.<span class="yellow">wrapKey</span>(aek, <span class="yellow">'password'</span>)</div>
+            <div>&nbsp;</div>
+            <div class="dim">// 4. Change password later</div>
+            <div><span class="dim">const</span> <span class="bright">next</span> = <span class="dim">await</span> conseal.<span class="yellow">rekey</span>(blob, <span class="yellow">'password'</span>, <span class="yellow">'new'</span>)</div>
+            <div>&nbsp;</div>
+            <div class="dim">// 5. Recover on new device</div>
+            <div><span class="dim">await</span> conseal.<span class="yellow">recoverWithMnemonic</span>(words)</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Demo CTA ──────────────────────────────────────────────── -->
+  <section class="section">
+    <div class="rl-stack rl-gap-l rl-align-center rl-padding-2xl rl-width-l" style="margin: 0 auto; text-align: center; padding-top: 4rem; padding-bottom: 4rem;">
+      <h2 class="section-title">See every API run<br>in your browser.</h2>
+      <p style="color: var(--color-muted); font-size: 1.05rem;">The interactive demo covers all seven modules. No server, no sign-up — just open your DevTools and watch the encryption happen.</p>
+      <div class="rl-cluster rl-gap-m rl-justify-center">
+        <a href="demo.html" class="btn btn-primary">Open live demo</a>
+        <a href="https://github.com/codesense/conseal" class="btn btn-ghost">View on GitHub</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Footer ────────────────────────────────────────────────── -->
+  <footer>
+    <div class="rl-stack rl-gap-l rl-padding-xl rl-width-2xl" style="margin: 0 auto;">
+      <div class="rl-split rl-align-start">
+        <div class="rl-stack rl-gap-s">
+          <div class="wordmark">
+            <svg width="18" height="18" viewBox="85 75 110 110" xmlns="http://www.w3.org/2000/svg">
+              <polygon class="logo-mark-outer" points="189.9,150.7 160.7,179.9 119.3,179.9 90.1,150.7 90.1,109.3 119.3,80.1 160.7,80.1 189.9,109.3"/>
+              <polygon class="logo-mark-inner" points="180.9,146.9 156.9,170.9 123.1,170.9 99.1,146.9 99.1,113.1 123.1,89.1 156.9,89.1 180.9,113.1"/>
+              <rect class="logo-mark-dash" x="131" y="106" width="18" height="48" rx="9"/>
+            </svg>
+            CONSEAL
+          </div>
+          <p style="font-size: 0.8rem;">Concealed by design.<br>Verified by math.</p>
+        </div>
+        <div class="rl-cluster rl-gap-2xl rl-align-start">
+          <div class="rl-stack rl-gap-s">
+            <strong style="font-size: 0.8rem; color: var(--color-text);">Library</strong>
+            <a href="#install"   style="font-size: 0.875rem; color: var(--color-muted);">Quick start</a>
+            <a href="#api"       style="font-size: 0.875rem; color: var(--color-muted);">API reference</a>
+            <a href="#concepts"  style="font-size: 0.875rem; color: var(--color-muted);">Key concepts</a>
+            <a href="demo.html" style="font-size: 0.875rem; color: var(--color-muted);">Live demo</a>
+          </div>
+          <div class="rl-stack rl-gap-s">
+            <strong style="font-size: 0.8rem; color: var(--color-text);">Modules</strong>
+            <a href="#api" style="font-size: 0.875rem; color: var(--color-muted);">AES-256-GCM</a>
+            <a href="#api" style="font-size: 0.875rem; color: var(--color-muted);">ECDH P-256</a>
+            <a href="#api" style="font-size: 0.875rem; color: var(--color-muted);">ECDSA P-256</a>
+            <a href="#api" style="font-size: 0.875rem; color: var(--color-muted);">PBKDF2 / Envelope</a>
+            <a href="#api" style="font-size: 0.875rem; color: var(--color-muted);">BIP-39 Mnemonic</a>
+          </div>
+          <div class="rl-stack rl-gap-s">
+            <strong style="font-size: 0.8rem; color: var(--color-text);">Project</strong>
+            <a href="https://github.com/codesense/conseal" style="font-size: 0.875rem; color: var(--color-muted);">GitHub</a>
+            <a href="https://www.npmjs.com/package/conseal" style="font-size: 0.875rem; color: var(--color-muted);">npm</a>
+            <a href="https://github.com/codesense/conseal/blob/main/LICENSE" style="font-size: 0.875rem; color: var(--color-muted);">License</a>
+            <a href="https://github.com/codesense/conseal/blob/main/CONTRIBUTING.md" style="font-size: 0.875rem; color: var(--color-muted);">Contributing</a>
+          </div>
+        </div>
+      </div>
+      <hr style="border: none; border-top: 1px solid var(--color-border);">
+      <div class="rl-split">
+        <span style="font-size: 0.8rem;">© 2026 Conseal. Open-source under the AGPL license.</span>
+        <span style="font-size: 0.8rem; font-family: 'SF Mono','Fira Code',monospace; color: var(--color-muted);">v0.1.0</span>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      document.querySelector('.theme-toggle').textContent = isDark ? '☾' : '☀';
+    }
+
+    function copyInstall() {
+      navigator.clipboard.writeText('npm install conseal').then(() => {
+        const t = document.getElementById('toast');
+        t.classList.add('show');
+        setTimeout(() => t.classList.remove('show'), 2000);
+      });
+    }
+  </script>
+
+</body>
+</html>

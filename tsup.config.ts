@@ -7,6 +7,7 @@ export default defineConfig({
   ],
   format: ['esm'],
   outDir: 'dist',
+  noExternal: [/.*/],
   dts: {
     compilerOptions: {
       // tsup's DTS build via rollup-plugin-dts always injects baseUrl: ".",
