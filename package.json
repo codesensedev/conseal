@@ -1,6 +1,7 @@
 {
   "name": "@codesense/conseal",
   "version": "0.0.0",
+  "description": "Browser-side zero-knowledge cryptography library using SubtleCrypto.",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
