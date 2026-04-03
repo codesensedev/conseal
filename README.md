@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
-    <img src="docs/assets/logo-light.svg" width="64" height="64" alt="Conseal logo">
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/codesensedev/conseal/main/docs/assets/logo-dark.svg">
+    <img src="https://raw.githubusercontent.com/codesensedev/conseal/main/docs/assets/logo-light.svg" width="64" height="64" alt="Conseal logo">
   </picture>
 </p>
 
