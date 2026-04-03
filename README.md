@@ -1,5 +1,8 @@
 <p align="center">
-  <img src="docs/assets/logo.svg" width="64" height="64" alt="Conseal logo">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.svg">
+    <img src="docs/assets/logo-light.svg" width="64" height="64" alt="Conseal logo">
+  </picture>
 </p>
 
 <h1 align="center">Conseal</h1>

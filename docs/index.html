@@ -101,6 +101,16 @@
     .logo-mark-inner { fill: var(--color-bg);     stroke: var(--color-bg);     stroke-width: 6; stroke-linejoin: round; }
     .logo-mark-dash  { fill: var(--color-accent); }
 
+    /* Light/Dark mode logo switching */
+    .logo-light { display: block; }
+    .logo-dark { display: none; }
+
+    [data-theme="light"] .logo-light { display: block; }
+    [data-theme="light"] .logo-dark { display: none; }
+
+    [data-theme="dark"] .logo-light { display: none; }
+    [data-theme="dark"] .logo-dark { display: block; }
+
     /* ── Hero ─────────────────────────────────────────────────── */
     .hero {
       background:
@@ -349,11 +359,8 @@
     <div class="rl-split rl-padding-m rl-width-2xl" style="margin: 0 auto;">
       <div class="rl-cluster rl-gap-l rl-align-center">
         <div class="wordmark">
-          <svg width="22" height="22" viewBox="85 75 110 110" xmlns="http://www.w3.org/2000/svg">
-            <polygon class="logo-mark-outer" points="189.9,150.7 160.7,179.9 119.3,179.9 90.1,150.7 90.1,109.3 119.3,80.1 160.7,80.1 189.9,109.3"/>
-            <polygon class="logo-mark-inner" points="180.9,146.9 156.9,170.9 123.1,170.9 99.1,146.9 99.1,113.1 123.1,89.1 156.9,89.1 180.9,113.1"/>
-            <rect class="logo-mark-dash" x="131" y="106" width="18" height="48" rx="9"/>
-          </svg>
+          <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 22px; height: 22px;">
+          <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 22px; height: 22px;">
           CONSEAL
         </div>
         <nav class="rl-cluster rl-gap-l" style="font-size: 0.875rem; color: var(--color-muted);">
@@ -376,11 +383,8 @@
     <div class="rl-stack rl-gap-xl rl-align-center rl-padding-2xl rl-width-xl" style="margin: 0 auto; text-align: center; padding-top: 5rem; padding-bottom: 5rem;">
 
       <div class="wordmark-hero">
-        <svg width="52" height="52" viewBox="85 75 110 110" xmlns="http://www.w3.org/2000/svg">
-          <polygon class="logo-mark-outer" points="189.9,150.7 160.7,179.9 119.3,179.9 90.1,150.7 90.1,109.3 119.3,80.1 160.7,80.1 189.9,109.3"/>
-          <polygon class="logo-mark-inner" points="180.9,146.9 156.9,170.9 123.1,170.9 99.1,146.9 99.1,113.1 123.1,89.1 156.9,89.1 180.9,113.1"/>
-          <rect class="logo-mark-dash" x="131" y="106" width="18" height="48" rx="9"/>
-        </svg>
+        <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 52px; height: 52px;">
+        <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 52px; height: 52px;">
         CONSEAL
       </div>
 
@@ -665,11 +669,8 @@
 
           <div class="rl-stack rl-gap-l">
             <div class="rl-cluster rl-gap-m rl-align-center">
-              <svg class="seal-mark" viewBox="85 75 110 110" xmlns="http://www.w3.org/2000/svg">
-                <polygon class="logo-mark-outer" points="189.9,150.7 160.7,179.9 119.3,179.9 90.1,150.7 90.1,109.3 119.3,80.1 160.7,80.1 189.9,109.3"/>
-                <polygon class="logo-mark-inner" points="180.9,146.9 156.9,170.9 123.1,170.9 99.1,146.9 99.1,113.1 123.1,89.1 156.9,89.1 180.9,113.1"/>
-                <rect class="logo-mark-dash" x="131" y="106" width="18" height="48" rx="9"/>
-              </svg>
+              <img src="assets/logo-light.svg" class="seal-mark logo-light" alt="Conseal logo">
+              <img src="assets/logo-dark.svg" class="seal-mark logo-dark" alt="Conseal logo">
               <span class="section-label">Key concepts</span>
             </div>
 
@@ -736,14 +737,11 @@
       <div class="rl-split rl-align-start">
         <div class="rl-stack rl-gap-s">
           <div class="wordmark">
-            <svg width="18" height="18" viewBox="85 75 110 110" xmlns="http://www.w3.org/2000/svg">
-              <polygon class="logo-mark-outer" points="189.9,150.7 160.7,179.9 119.3,179.9 90.1,150.7 90.1,109.3 119.3,80.1 160.7,80.1 189.9,109.3"/>
-              <polygon class="logo-mark-inner" points="180.9,146.9 156.9,170.9 123.1,170.9 99.1,146.9 99.1,113.1 123.1,89.1 156.9,89.1 180.9,113.1"/>
-              <rect class="logo-mark-dash" x="131" y="106" width="18" height="48" rx="9"/>
-            </svg>
+            <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 18px; height: 18px;">
+            <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 18px; height: 18px;">
             CONSEAL
           </div>
-          <p style="font-size: 0.8rem;">Concealed by design.<br>Verified by math.</p>
+          <p style="font-size: 0.8rem;">Privacy by design</p>
         </div>
         <div class="rl-cluster rl-gap-2xl rl-align-start">
           <div class="rl-stack rl-gap-s">
