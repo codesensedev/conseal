@@ -372,9 +372,9 @@
         </nav>
       </div>
       <div class="rl-cluster rl-gap-m rl-align-center">
-        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark">☀</button>
-        <a href="https://github.com/codesensedev/conseal" class="btn btn-ghost" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">GitHub</a>
         <a href="demo.html" class="btn btn-primary" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">Live demo</a>
+        <a target="_blank" href="https://github.com/codesensedev/conseal" class="btn btn-ghost" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">GitHub</a>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark">☀</button>
       </div>
     </div>
   </header>
@@ -897,11 +897,32 @@
   </footer>
 
   <script>
+    // Initialize theme on page load
+    function initTheme() {
+      // Check for saved preference in localStorage
+      const savedTheme = localStorage.getItem('conseal-theme');
+      
+      if (savedTheme) {
+        // Use saved preference
+        setTheme(savedTheme);
+      } else {
+        // Use device preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+      }
+    }
+
+    function setTheme(theme) {
+      const html = document.documentElement;
+      html.setAttribute('data-theme', theme);
+      document.querySelector('.theme-toggle').textContent = theme === 'dark' ? '☾' : '☀';
+      localStorage.setItem('conseal-theme', theme);
+    }
+
     function toggleTheme() {
       const html = document.documentElement;
       const isDark = html.getAttribute('data-theme') === 'dark';
-      html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-      document.querySelector('.theme-toggle').textContent = isDark ? '☾' : '☀';
+      setTheme(isDark ? 'light' : 'dark');
     }
 
     function copyInstall() {
@@ -910,6 +931,13 @@
         t.classList.add('show');
         setTimeout(() => t.classList.remove('show'), 2000);
       });
+    }
+
+    // Initialize theme when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initTheme);
+    } else {
+      initTheme();
     }
   </script>
 

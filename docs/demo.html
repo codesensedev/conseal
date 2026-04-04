@@ -14,24 +14,32 @@
 
   <!-- ── Nav ──────────────────────────────────────────────────────────────── -->
   <header class="nav">
-    <div class="nav-inner">
-      <div class="nav-left">
-        <a href="index.html" class="wordmark">
-          <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 20px; height: 20px;">
-          <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 20px; height: 20px;">
+    <div class="rl-split rl-padding-m rl-width-2xl" style="margin: 0 auto;">
+      <div class="rl-cluster rl-gap-l rl-align-center">
+        <div class="wordmark">
+          <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 22px; height: 22px;">
+          <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 22px; height: 22px;">
           CONSEAL
-        </a>
-        <span class="nav-sep">·</span>
-        <span class="nav-title">Interactive Demo</span>
+        </div>
+        <nav class="rl-cluster rl-gap-l" style="font-size: 0.875rem; color: var(--color-muted);">
+          <a href="index.html#install"   style="color: inherit;">Install</a>
+          <a href="index.html#api"       style="color: inherit;">API</a>
+          <a href="index.html#concepts"  style="color: inherit;">Concepts</a>
+          <a href="index.html#glossary"  style="color: inherit;">Glossary</a>
+          <a href="demo.html" style="color: inherit;">Demo</a>
+        </nav>
       </div>
-      <div class="nav-right">
-        <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light/dark">☀</button>
-        <a href="index.html" class="btn-ghost">← Docs</a>
+      <div class="rl-cluster rl-gap-m rl-align-center">
+        <a target="_blank" href="https://github.com/codesensedev/conseal" class="btn btn-ghost" style="padding: 0.4rem 0.9rem; font-size: 0.85rem;">GitHub</a>
+        <button class="theme-toggle" onclick="toggleTheme()" title="Toggle light/dark">☀</button>
       </div>
     </div>
   </header>
 
   <div class="demo-content">
+
+  <!-- ── Live Demo Title ──────────────────────────────────────────────────── -->
+  <h1 style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; margin-top: 1rem;">Live Demo</h1>
 
   <!-- ── Tab bar ──────────────────────────────────────────────────────────── -->
   <nav class="tabs">
@@ -823,14 +831,49 @@
   </div><!-- /.demo-content -->
 
   <!-- ── Footer ───────────────────────────────────────────────────────────── -->
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <div class="wordmark">
-        <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 18px; height: 18px;">
-        <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 18px; height: 18px;">
-        CONSEAL
+  <footer>
+    <div class="rl-stack rl-gap-l rl-padding-xl rl-width-2xl" style="margin: 0 auto;">
+      <div class="rl-split rl-align-start">
+        <div class="rl-stack rl-gap-s">
+          <div class="wordmark">
+            <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 18px; height: 18px;">
+            <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 18px; height: 18px;">
+            CONSEAL
+          </div>
+          <p style="font-size: 0.8rem;">Privacy by design</p>
+        </div>
+        <div class="rl-cluster rl-gap-2xl rl-align-start">
+          <div class="rl-stack rl-gap-s">
+            <strong style="font-size: 0.8rem; color: var(--color-text);">Library</strong>
+            <a href="index.html#install"   style="font-size: 0.875rem; color: var(--color-muted);">Quick start</a>
+            <a href="index.html#api"       style="font-size: 0.875rem; color: var(--color-muted);">API reference</a>
+            <a href="index.html#concepts"  style="font-size: 0.875rem; color: var(--color-muted);">Key concepts</a>
+            <a href="index.html#glossary"  style="font-size: 0.875rem; color: var(--color-muted);">Glossary</a>
+            <a href="demo.html" style="font-size: 0.875rem; color: var(--color-muted);">Live demo</a>
+          </div>
+          <div class="rl-stack rl-gap-s">
+            <strong style="font-size: 0.8rem; color: var(--color-text);">Modules</strong>
+            <a href="index.html#api" style="font-size: 0.875rem; color: var(--color-muted);">AES-256-GCM</a>
+            <a href="index.html#api" style="font-size: 0.875rem; color: var(--color-muted);">ECDH P-256</a>
+            <a href="index.html#api" style="font-size: 0.875rem; color: var(--color-muted);">ECDSA P-256</a>
+            <a href="index.html#api" style="font-size: 0.875rem; color: var(--color-muted);">PBKDF2 / Envelope</a>
+            <a href="index.html#api" style="font-size: 0.875rem; color: var(--color-muted);">BIP-39 Mnemonic</a>
+          </div>
+          <div class="rl-stack rl-gap-s">
+            <strong style="font-size: 0.8rem; color: var(--color-text);">Project</strong>
+            <a href="https://github.com/codesensedev/conseal" style="font-size: 0.875rem; color: var(--color-muted);">GitHub</a>
+            <a href="https://www.npmjs.com/package/conseal" style="font-size: 0.875rem; color: var(--color-muted);">npm</a>
+            <a href="https://github.com/codesensedev/conseal/blob/main/LICENSE" style="font-size: 0.875rem; color: var(--color-muted);">License</a>
+            <a href="https://github.com/codesensedev/conseal/blob/main/CONTRIBUTING.md" style="font-size: 0.875rem; color: var(--color-muted);">Contributing</a>
+            <a href="threat-model.html" style="font-size: 0.875rem; color: var(--color-muted);">Threat model</a>
+          </div>
+        </div>
       </div>
-      <span class="footer-copy">© 2026 Conseal. Open-source under the AGPL license.</span>
+      <hr style="border: none; border-top: 1px solid var(--color-border);">
+      <div class="rl-split">
+        <span style="font-size: 0.8rem;">© 2026 Conseal. Open-source under the AGPL license.</span>
+        <span style="font-size: 0.8rem; font-family: 'SF Mono','Fira Code',monospace; color: var(--color-muted);">__VERSION__</span>
+      </div>
     </div>
   </footer>
 
@@ -1965,11 +2008,42 @@
   </script>
 
   <script>
+    // Initialize theme on page load
+    function initTheme() {
+      // Check for saved preference in localStorage
+      const savedTheme = localStorage.getItem('conseal-theme');
+      
+      if (savedTheme) {
+        // Use saved preference
+        setTheme(savedTheme);
+      } else {
+        // Use device preference
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+      }
+    }
+
+    function setTheme(theme) {
+      const html = document.documentElement;
+      html.setAttribute('data-theme', theme);
+      const themeBtn = document.querySelector('.theme-toggle');
+      if (themeBtn) {
+        themeBtn.textContent = theme === 'dark' ? '☾' : '☀';
+      }
+      localStorage.setItem('conseal-theme', theme);
+    }
+
     function toggleTheme() {
       const html = document.documentElement;
       const isDark = html.getAttribute('data-theme') === 'dark';
-      html.setAttribute('data-theme', isDark ? 'light' : 'dark');
-      document.getElementById('theme-toggle-btn').textContent = isDark ? '☾' : '☀';
+      setTheme(isDark ? 'light' : 'dark');
+    }
+
+    // Initialize theme when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initTheme);
+    } else {
+      initTheme();
     }
   </script>
 </body>

@@ -170,6 +170,9 @@ a:hover { text-decoration: underline; }
   padding: 40px 24px 64px;
   gap: 40px;
   flex: 1;
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 /* ── Form elements ────────────────────────────────────────────────────────── */
@@ -885,26 +888,10 @@ textarea.p2p-received { min-height: 80px; color: var(--color-code-text); }
 
 /* ── Footer ───────────────────────────────────────────────────────────────── */
 
-.site-footer {
+footer {
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
   color: var(--color-muted);
   font-size: 0.875rem;
   margin-top: auto;
-}
-
-.footer-inner {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.footer-copy {
-  font-size: 0.8rem;
-  color: var(--color-muted);
 }
