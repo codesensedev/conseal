@@ -1,3 +1,4 @@
 .conseal
 node_modules/
 dist/
+var/

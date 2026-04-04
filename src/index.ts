@@ -19,7 +19,10 @@
 export { seal, unseal, generateAesKey, importAesKey } from './aes'
 
 // PBKDF2 passphrase-based key wrapping
-export { wrapKey, unwrapKey, rekey } from './pbkdf2'
+export { wrapKey, unwrapKey, rekey, rekeySecretKey } from './pbkdf2'
+
+// Secret Key — 128-bit second factor for AEK wrapping
+export { generateSecretKey, combinePassphraseAndSecretKey } from './secret-key'
 
 // ECDH P-256 message encryption
 export { sealMessage, unsealMessage, generateECDHKeyPair } from './ecdh'

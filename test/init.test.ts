@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { init, AEK_KEY_ID } from '../src/init'
 import { wrapKey } from '../src/pbkdf2'
 import { load } from '../src/storage'
+import { generateSecretKey } from '../src/secret-key'
 
 beforeEach(async () => {
   await new Promise<void>((resolve, reject) => {
@@ -38,5 +39,31 @@ describe('init', () => {
     )
     const { wrappedKey, salt } = await wrapKey('correct', aek)
     await expect(init(wrappedKey, salt, 'wrong')).rejects.toThrow()
+  }, 15_000)
+
+  it('unwraps the AEK and saves it to IndexedDB when secret key is provided', async () => {
+    const aek = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    )
+    const sk = generateSecretKey()
+    const { wrappedKey, salt } = await wrapKey('my-passphrase', aek, sk)
+    await init(wrappedKey, salt, 'my-passphrase', sk)
+    const stored = await load(AEK_KEY_ID)
+    expect(stored).not.toBeNull()
+    expect(stored!.type).toBe('secret')
+  }, 15_000)
+
+  it('throws when secret key is wrong', async () => {
+    const aek = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    )
+    const sk = generateSecretKey()
+    const { wrappedKey, salt } = await wrapKey('my-passphrase', aek, sk)
+    const wrongSk = generateSecretKey()
+    await expect(init(wrappedKey, salt, 'my-passphrase', wrongSk)).rejects.toThrow()
   }, 15_000)
 })

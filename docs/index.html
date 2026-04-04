@@ -568,15 +568,18 @@
         <!-- PBKDF2 -->
         <div>
           <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
-            <span class="section-label">PBKDF2 — passphrase key wrapping</span>
+            <span class="section-label">PBKDF2 — passphrase &amp; Secret Key wrapping</span>
           </div>
           <div class="card" style="overflow-x:auto;">
             <table class="api-table">
               <thead><tr><th>Function</th><th>Description</th></tr></thead>
               <tbody>
-                <tr><td class="fn">wrapKey(key, passphrase)</td><td class="desc">Derive a wrapping key from a passphrase (PBKDF2 + 310 000 iterations) and encrypt the AES key.</td></tr>
-                <tr><td class="fn">unwrapKey(wrapped, passphrase)</td><td class="desc">Reverse of <code>wrapKey</code>. Throws on wrong passphrase.</td></tr>
-                <tr><td class="fn">rekey(wrapped, old, next)</td><td class="desc">Re-encrypt a wrapped key under a new passphrase without exposing the raw key material.</td></tr>
+                <tr><td class="fn">wrapKey(passphrase, key, secretKey?)</td><td class="desc">Derive a wrapping key from a passphrase (PBKDF2 + 600,000 iterations) and AES-KW wrap the AES key. Optional 128-bit Secret Key hardens the KDF input.</td></tr>
+                <tr><td class="fn">unwrapKey(passphrase, wrapped, salt, secretKey?)</td><td class="desc">Reverse of <code>wrapKey</code>. Returns <code>extractable: false</code>. Throws on wrong passphrase or Secret Key.</td></tr>
+                <tr><td class="fn">rekey(oldPass, newPass, wrapped, salt, secretKey?)</td><td class="desc">Change the passphrase without re-encrypting content. Secret Key stays the same.</td></tr>
+                <tr><td class="fn">rekeySecretKey(pass, oldSK, newSK, wrapped, salt)</td><td class="desc">Rotate the Secret Key while keeping the passphrase. Use only on compromise — requires re-enrolling all devices.</td></tr>
+                <tr><td class="fn">generateSecretKey()</td><td class="desc">Generate a random 128-bit Secret Key. Call once at setup; store device-side and keep an offline copy.</td></tr>
+                <tr><td class="fn">combinePassphraseAndSecretKey(pass, sk)</td><td class="desc">SHA-256 hash of passphrase + Secret Key into a single opaque PBKDF2 input. Used internally by wrap/unwrap/rekey.</td></tr>
               </tbody>
             </table>
           </div>
@@ -643,7 +646,7 @@
             <table class="api-table">
               <thead><tr><th>Function</th><th>Module</th><th>Description</th></tr></thead>
               <tbody>
-                <tr><td class="fn">init()</td><td class="mod">conseal</td><td class="desc">Generate and persist an Account Encryption Key (AEK) to IndexedDB. Idempotent.</td></tr>
+                <tr><td class="fn">init(wrapped, salt, pass, secretKey?)</td><td class="mod">conseal</td><td class="desc">Unwrap the AEK with passphrase (+ optional Secret Key) and persist it to IndexedDB under <code>AEK_KEY_ID</code>.</td></tr>
                 <tr><td class="fn">exportPublicKeyAsJwk(key)</td><td class="mod">conseal</td><td class="desc">Serialise a public <code>CryptoKey</code> to a JWK object for distribution.</td></tr>
                 <tr><td class="fn">importPublicKeyFromJwk(jwk)</td><td class="mod">conseal</td><td class="desc">Restore a <code>CryptoKey</code> from a JWK object.</td></tr>
                 <tr><td class="fn">generateMnemonic(aek)</td><td class="mod">conseal</td><td class="desc">Derive a BIP-39 mnemonic from an AES key for human-readable backup.</td></tr>
@@ -651,7 +654,7 @@
                 <tr><td class="fn">digest(data)</td><td class="mod">conseal</td><td class="desc">SHA-256 hash. Returns <code>Uint8Array</code>.</td></tr>
                 <tr><td class="fn">toBase64 / fromBase64</td><td class="mod">conseal</td><td class="desc">Standard Base64 encode / decode.</td></tr>
                 <tr><td class="fn">toBase64Url / fromBase64Url</td><td class="mod">conseal</td><td class="desc">URL-safe Base64 (no <code>+/=</code>) encode / decode.</td></tr>
-                <tr><td class="fn">loadKey / saveKey</td><td class="mod">conseal/storage</td><td class="desc">Read/write a <code>CryptoKey</code> from IndexedDB. Used internally by <code>init()</code>.</td></tr>
+                <tr><td class="fn">load / save / remove</td><td class="mod">conseal</td><td class="desc">Read/write/delete a <code>CryptoKey</code> from IndexedDB by string id. Used internally by <code>init()</code>.</td></tr>
               </tbody>
             </table>
           </div>
@@ -697,20 +700,20 @@
             <div>&nbsp;</div>
             <div><span class="dim">import</span> * <span class="dim">as</span> <span class="bright">conseal</span> <span class="dim">from</span> <span class="yellow">'conseal'</span></div>
             <div>&nbsp;</div>
-            <div class="dim">// 1. First run on this device</div>
-            <div><span class="dim">const</span> { <span class="bright">aek</span> } = <span class="dim">await</span> conseal.<span class="yellow">init</span>()</div>
+            <div class="dim">// 1. Setup — generate AEK + 128-bit Secret Key</div>
+            <div><span class="dim">const</span> <span class="bright">aek</span> = <span class="dim">await</span> crypto.subtle.<span class="yellow">generateKey</span>(<span class="dim">...</span>)</div>
+            <div><span class="dim">const</span> <span class="bright">sk</span> = conseal.<span class="yellow">generateSecretKey</span>()</div>
             <div>&nbsp;</div>
-            <div class="dim">// 2. Back up as a mnemonic phrase</div>
-            <div><span class="dim">const</span> <span class="bright">words</span> = <span class="dim">await</span> conseal.<span class="yellow">generateMnemonic</span>(aek)</div>
-            <div><span class="dim">// → "obscure vapor skate ..."</span></div>
+            <div class="dim">// 2. Wrap for server storage</div>
+            <div><span class="dim">const</span> { <span class="bright">wrappedKey</span>, <span class="bright">salt</span> } = <span class="dim">await</span> conseal.<span class="yellow">wrapKey</span>(<span class="yellow">'password'</span>, aek, sk)</div>
             <div>&nbsp;</div>
-            <div class="dim">// 3. Wrap for server storage</div>
-            <div><span class="dim">const</span> <span class="bright">blob</span> = <span class="dim">await</span> conseal.<span class="yellow">wrapKey</span>(aek, <span class="yellow">'password'</span>)</div>
+            <div class="dim">// 3. New device — unwrap into IndexedDB</div>
+            <div><span class="dim">await</span> conseal.<span class="yellow">init</span>(wrappedKey, salt, <span class="yellow">'password'</span>, sk)</div>
             <div>&nbsp;</div>
-            <div class="dim">// 4. Change password later</div>
-            <div><span class="dim">const</span> <span class="bright">next</span> = <span class="dim">await</span> conseal.<span class="yellow">rekey</span>(blob, <span class="yellow">'password'</span>, <span class="yellow">'new'</span>)</div>
+            <div class="dim">// 4. Change password (Secret Key unchanged)</div>
+            <div><span class="dim">const</span> <span class="bright">next</span> = <span class="dim">await</span> conseal.<span class="yellow">rekey</span>(<span class="yellow">'password'</span>, <span class="yellow">'new'</span>, wrappedKey, salt, sk)</div>
             <div>&nbsp;</div>
-            <div class="dim">// 5. Recover on new device</div>
+            <div class="dim">// 5. Recover on new device via mnemonic</div>
             <div><span class="dim">await</span> conseal.<span class="yellow">recoverWithMnemonic</span>(words)</div>
           </div>
 

@@ -1,14 +1,37 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Conseal — demo</title>
+  <title>Conseal — Interactive Demo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@codesense/relayout@0.1.5/dist/css/relayout.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;700;900&display=swap">
   <link rel="stylesheet" href="assets/demo.css">
 </head>
 <body>
 
-  <h1>Conseal</h1>
+  <!-- ── Nav ──────────────────────────────────────────────────────────────── -->
+  <header class="nav">
+    <div class="nav-inner">
+      <div class="nav-left">
+        <a href="index.html" class="wordmark">
+          <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 20px; height: 20px;">
+          <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 20px; height: 20px;">
+          CONSEAL
+        </a>
+        <span class="nav-sep">·</span>
+        <span class="nav-title">Interactive Demo</span>
+      </div>
+      <div class="nav-right">
+        <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light/dark">☀</button>
+        <a href="index.html" class="btn-ghost">← Docs</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="demo-content">
 
   <!-- ── Tab bar ──────────────────────────────────────────────────────────── -->
   <nav class="tabs">
@@ -18,6 +41,7 @@
     <button class="tab-btn" data-tab="p2p">P2P</button>
     <button class="tab-btn" data-tab="sign">Sign</button>
     <button class="tab-btn" data-tab="rekey">Rekey</button>
+    <button class="tab-btn" data-tab="secretkey">Secret Key</button>
     <button class="tab-btn" data-tab="jwk">JWK</button>
   </nav>
 
@@ -646,6 +670,109 @@
   </section>
 
   <!-- ═══════════════════════════════════════════════════════════════════════
+       TAB: SECRET KEY
+  ════════════════════════════════════════════════════════════════════════ -->
+  <section class="tab-panel" id="tab-secretkey">
+    <p class="subtitle">
+      A 128-bit Secret Key is a second factor for AEK wrapping — neither the passphrase nor
+      the Secret Key alone can unwrap the key. Mirrors 1Password's "Account Key" model.
+    </p>
+
+    <div class="main">
+
+      <!-- Step 1: Wrap -->
+      <div class="card" id="sk-card-setup">
+        <div class="card-header">
+          <div class="step-num" id="sk-num-1">1</div>
+          <h2>Wrap with passphrase + Secret Key</h2>
+        </div>
+
+        <p class="note">
+          A random 128-bit Secret Key is generated. The AEK is wrapped with both
+          the passphrase and the Secret Key combined — PBKDF2 never sees the
+          passphrase alone.
+        </p>
+
+        <div class="row">
+          <div>
+            <label>Passphrase</label>
+            <input id="sk-passphrase" type="password" placeholder="Enter a passphrase…">
+          </div>
+          <div>
+            <label>Message to seal</label>
+            <input id="sk-message" type="text" placeholder="A secret to protect…">
+          </div>
+        </div>
+
+        <button id="sk-setup-btn">Generate Secret Key &amp; Wrap →</button>
+        <div id="sk-setup-status" class="status"></div>
+
+        <div id="sk-setup-result" style="display:none; flex-direction:column; gap:14px;">
+          <hr class="divider">
+          <div>
+            <label>Generated Secret Key (base64 — store this device-side)</label>
+            <textarea id="sk-key-display" class="mono" readonly rows="2"></textarea>
+          </div>
+          <div>
+            <label>Wrapped AEK blob</label>
+            <textarea id="sk-blob-display" class="mono" readonly></textarea>
+          </div>
+          <div>
+            <label>Sealed message</label>
+            <textarea id="sk-sealed-display" class="mono" readonly></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="connector">prove both factors are needed</div>
+
+      <!-- Step 2: Unlock correctly -->
+      <div class="card dim" id="sk-card-unlock">
+        <div class="card-header">
+          <div class="step-num" id="sk-num-2">2</div>
+          <h2>Unlock with correct credentials</h2>
+        </div>
+
+        <p class="note">
+          Using the same passphrase and Secret Key from step 1.
+          Unwraps the AEK and decrypts the sealed message.
+        </p>
+
+        <button id="sk-unlock-btn">Unlock &amp; Decrypt →</button>
+        <div id="sk-unlock-status" class="status"></div>
+
+        <div id="sk-unlock-result" style="display:none; flex-direction:column; gap:14px;">
+          <hr class="divider">
+          <div>
+            <label>Decrypted message</label>
+            <textarea id="sk-unlock-output" readonly></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="connector">now try without the Secret Key</div>
+
+      <!-- Step 3: Fail with wrong SK -->
+      <div class="card dim" id="sk-card-attack">
+        <div class="card-header">
+          <div class="step-num" id="sk-num-3">3</div>
+          <h2>Attempt with wrong Secret Key</h2>
+        </div>
+
+        <p class="note">
+          The correct passphrase is used, but a freshly generated (wrong) Secret Key replaces
+          the real one. Even with the right passphrase, unwrapping must fail — the passphrase
+          alone is not enough.
+        </p>
+
+        <button id="sk-attack-btn">Try Wrong Secret Key →</button>
+        <div id="sk-attack-status" class="status"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
        TAB: JWK
   ════════════════════════════════════════════════════════════════════════ -->
   <section class="tab-panel" id="tab-jwk">
@@ -692,6 +819,20 @@
 
     </div>
   </section>
+
+  </div><!-- /.demo-content -->
+
+  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="wordmark">
+        <img src="assets/logo-light.svg" class="logo-light" alt="Conseal logo" style="width: 18px; height: 18px;">
+        <img src="assets/logo-dark.svg" class="logo-dark" alt="Conseal logo" style="width: 18px; height: 18px;">
+        CONSEAL
+      </div>
+      <span class="footer-copy">© 2026 Conseal. Open-source under the AGPL license.</span>
+    </div>
+  </footer>
 
   <!-- ── importmap (needed for account tab's direct @scure/bip39 usage) ─── -->
   <script type="importmap">
@@ -1583,6 +1724,107 @@
     })
 
     // ═══════════════════════════════════════════════════════════════════════
+    // TAB: SECRET KEY
+    // ═══════════════════════════════════════════════════════════════════════
+
+    let skState = {
+      passphrase:  null,
+      secretKey:   null,
+      wrappedKey:  null,
+      salt:        null,
+      sealed:      null,
+    }
+
+    function skSetStatus(el, type, msg) { el.className = `status ${type}`; el.textContent = msg }
+    function skClearStatus(el) { el.className = 'status'; el.textContent = '' }
+
+    document.getElementById('sk-setup-btn').addEventListener('click', async () => {
+      const passphrase = document.getElementById('sk-passphrase').value
+      const message    = document.getElementById('sk-message').value
+      const statusEl   = document.getElementById('sk-setup-status')
+      const btn        = document.getElementById('sk-setup-btn')
+
+      skClearStatus(statusEl)
+      if (!passphrase)     { skSetStatus(statusEl, 'error', 'Enter a passphrase.'); return }
+      if (!message.trim()) { skSetStatus(statusEl, 'error', 'Enter a message to seal.'); return }
+
+      btn.disabled = true; btn.textContent = 'Generating… (slow by design)'
+
+      try {
+        const aek = await conseal.generateAesKey(true)
+        const sk  = conseal.generateSecretKey()
+        const { wrappedKey, salt } = await conseal.wrapKey(passphrase, aek, sk)
+        const sealed = await conseal.seal(aek, new TextEncoder().encode(message).buffer)
+
+        skState = { passphrase, secretKey: sk, wrappedKey, salt, sealed }
+
+        document.getElementById('sk-key-display').value = conseal.toBase64(sk)
+        document.getElementById('sk-blob-display').value = JSON.stringify(
+          { wrappedKey: conseal.toBase64(wrappedKey), salt: conseal.toBase64(salt) }, null, 2
+        )
+        document.getElementById('sk-sealed-display').value = JSON.stringify(
+          { ciphertext: conseal.toBase64(sealed.ciphertext), iv: conseal.toBase64(sealed.iv) }, null, 2
+        )
+
+        document.getElementById('sk-setup-result').style.display = 'flex'
+        document.getElementById('sk-num-1').classList.add('done')
+        document.getElementById('sk-card-unlock').classList.remove('dim')
+        skSetStatus(statusEl, 'ok', 'AEK wrapped with passphrase + Secret Key.')
+      } catch (err) {
+        skSetStatus(statusEl, 'error', `Error: ${err.message}`)
+      } finally {
+        btn.disabled = false; btn.textContent = 'Generate Secret Key & Wrap →'
+      }
+    })
+
+    document.getElementById('sk-unlock-btn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('sk-unlock-status')
+      const btn      = document.getElementById('sk-unlock-btn')
+
+      skClearStatus(statusEl)
+      btn.disabled = true; btn.textContent = 'Unlocking… (slow by design)'
+
+      try {
+        const aek = await conseal.unwrapKey(
+          skState.passphrase, skState.wrappedKey, skState.salt, skState.secretKey
+        )
+        const plaintext = new TextDecoder().decode(
+          await conseal.unseal(aek, skState.sealed.ciphertext, skState.sealed.iv)
+        )
+
+        document.getElementById('sk-unlock-output').value = plaintext
+        document.getElementById('sk-unlock-result').style.display = 'flex'
+        document.getElementById('sk-num-2').classList.add('done')
+        document.getElementById('sk-card-attack').classList.remove('dim')
+        skSetStatus(statusEl, 'ok', '✓ Decrypted — correct passphrase + Secret Key.')
+      } catch (err) {
+        skSetStatus(statusEl, 'error', `Error: ${err.message}`)
+      } finally {
+        btn.disabled = false; btn.textContent = 'Unlock & Decrypt →'
+      }
+    })
+
+    document.getElementById('sk-attack-btn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('sk-attack-status')
+      const btn      = document.getElementById('sk-attack-btn')
+
+      skClearStatus(statusEl)
+      btn.disabled = true; btn.textContent = 'Attempting… (slow by design)'
+
+      try {
+        const wrongSk = conseal.generateSecretKey()
+        await conseal.unwrapKey(skState.passphrase, skState.wrappedKey, skState.salt, wrongSk)
+        // Should never reach here
+        skSetStatus(statusEl, 'error', 'Unexpected: unwrap succeeded with wrong Secret Key.')
+      } catch {
+        document.getElementById('sk-num-3').classList.add('done')
+        skSetStatus(statusEl, 'ok', '✓ Correctly rejected — correct passphrase, wrong Secret Key. The passphrase alone is not enough.')
+      } finally {
+        btn.disabled = false; btn.textContent = 'Try Wrong Secret Key →'
+      }
+    })
+
+    // ═══════════════════════════════════════════════════════════════════════
     // TAB: JWK
     // ═══════════════════════════════════════════════════════════════════════
 
@@ -1720,6 +1962,15 @@
       }
     })
 
+  </script>
+
+  <script>
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.getAttribute('data-theme') === 'dark';
+      html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+      document.getElementById('theme-toggle-btn').textContent = isDark ? '☾' : '☀';
+    }
   </script>
 </body>
 </html>

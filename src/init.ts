@@ -5,9 +5,9 @@
  * New device setup orchestrator.
  *
  * init() is called once per device when a user signs in on a new device.
- * It unwraps the AEK using the user's passphrase and persists it to IndexedDB
- * under AEK_KEY_ID, where subsequent operations (seal, unseal, sealMessage, etc.)
- * can load it via loadKey(AEK_KEY_ID).
+ * It unwraps the AEK using the user's passphrase (and optional Secret Key)
+ * and persists it to IndexedDB under AEK_KEY_ID, where subsequent operations
+ * (seal, unseal, sealMessage, etc.) can load it via load(AEK_KEY_ID).
  *
  * The wrappedKey + salt are fetched from the server (Option A) or uploaded by
  * the user as a key file (Option B) before calling init().
@@ -20,14 +20,16 @@ import { save } from './storage'
 export const AEK_KEY_ID = 'aek'
 
 /**
- * Unwraps the AEK with the given passphrase and stores it in IndexedDB.
- * After this completes, the AEK is available via loadKey(AEK_KEY_ID).
+ * Unwraps the AEK with the given passphrase (and optional Secret Key) and
+ * stores it in IndexedDB. After this completes, the AEK is available via
+ * load(AEK_KEY_ID).
  */
 export async function init(
   wrappedKey: ArrayBuffer,
   salt: Uint8Array,
-  passphrase: string
+  passphrase: string,
+  secretKey?: Uint8Array
 ): Promise<void> {
-  const aek = await unwrapKey(passphrase, wrappedKey, salt)
+  const aek = await unwrapKey(passphrase, wrappedKey, salt, secretKey)
   await save(AEK_KEY_ID, aek)
 }
