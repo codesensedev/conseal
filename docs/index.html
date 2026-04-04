@@ -367,6 +367,7 @@
           <a href="#install"   style="color: inherit;">Install</a>
           <a href="#api"       style="color: inherit;">API</a>
           <a href="#concepts"  style="color: inherit;">Concepts</a>
+          <a href="#glossary"  style="color: inherit;">Glossary</a>
           <a href="demo.html" style="color: inherit;">Demo</a>
         </nav>
       </div>
@@ -734,6 +735,120 @@
     </div>
   </section>
 
+  <!-- ── Glossary ───────────────────────────────────────────────── -->
+  <section class="section" id="glossary">
+    <div class="rl-stack rl-gap-xl rl-padding-2xl rl-width-2xl" style="margin: 0 auto;">
+      <div class="rl-stack rl-gap-m">
+        <span class="section-label">Glossary</span>
+        <h2 class="section-title">Acronyms explained.</h2>
+        <p class="section-sub">Cryptography is dense with abbreviations. Here is what every acronym in conseal means, how it is used, and why it was chosen.</p>
+      </div>
+
+      <div class="rl-grid rl-grid-fit-l rl-gap-m">
+
+        <!-- AES-256-GCM -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">AES-256-GCM</span>
+            <span class="badge badge-green">symmetric</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">Advanced Encryption Standard &middot; 256-bit key &middot; Galois/Counter Mode</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">The symmetric cipher used for all data encryption in conseal. AES operates on 128-bit blocks; a 256-bit key makes exhaustive-search attacks computationally infeasible. GCM is an <em>authenticated</em> mode that simultaneously encrypts and produces an integrity tag — any tampering causes decryption to fail with an explicit error rather than silently returning corrupt data.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Used by:</strong> <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">seal</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">unseal</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">sealMessage</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">sealEnvelope</code></p>
+        </div>
+
+        <!-- PBKDF2 -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">PBKDF2</span>
+            <span class="badge badge-muted">key derivation</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">Password-Based Key Derivation Function 2 (RFC 8018)</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">Stretches a human passphrase into a fixed-length cryptographic key by running HMAC-SHA-256 many times in sequence. conseal uses 600,000 iterations — deliberately slow so that an attacker who captures a wrapped key must spend enormous computation to guess the passphrase. A random salt ensures identical passphrases produce different keys.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Used by:</strong> <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">wrapKey</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">unwrapKey</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">sealEnvelope</code></p>
+        </div>
+
+        <!-- ECDH -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">ECDH P-256</span>
+            <span class="badge badge-accent">asymmetric</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">Elliptic Curve Diffie-Hellman &middot; NIST P-256 curve</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">A key-agreement protocol that lets two parties independently derive the same shared secret using only their public keys — no prior shared secret required. conseal generates an ephemeral key pair per message, derives a one-time AES key from it, then discards the ephemeral private key, providing forward secrecy: compromising a long-term key does not expose past messages.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Used by:</strong> <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">sealMessage</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">unsealMessage</code></p>
+        </div>
+
+        <!-- ECDSA -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">ECDSA P-256</span>
+            <span class="badge badge-accent">asymmetric</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">Elliptic Curve Digital Signature Algorithm &middot; NIST P-256 curve</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">A digital signature scheme that proves data was produced by the holder of a specific private key — without revealing that key. Anyone with the corresponding public key can verify the signature. P-256 gives strong security in a compact 64-byte signature and is natively supported by the Web Crypto API in all modern browsers.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Used by:</strong> <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">sign</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">verify</code></p>
+        </div>
+
+        <!-- BIP-39 -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">BIP-39</span>
+            <span class="badge badge-muted">key recovery</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">Bitcoin Improvement Proposal 39</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">A standard that encodes binary entropy as a sequence of common English words drawn from a fixed 2,048-word list. The resulting phrase is far easier to write down and transcribe accurately than a raw hex key. conseal uses 24-word phrases (256 bits of entropy + 8-bit checksum) to let users back up and restore their AEK across devices.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Used by:</strong> <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">generateMnemonic</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">recoverWithMnemonic</code></p>
+        </div>
+
+        <!-- JWK -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">JWK</span>
+            <span class="badge badge-muted">serialisation</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">JSON Web Key (RFC 7517)</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">A standardised JSON representation for cryptographic keys. It encodes the key type, algorithm parameters, and key material in a portable, human-readable object. conseal uses JWK to distribute ECDH and ECDSA public keys so that any Web Crypto-capable environment can import them without custom serialisation logic.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Used by:</strong> <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">exportPublicKeyAsJwk</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">importPublicKeyFromJwk</code></p>
+        </div>
+
+        <!-- AEK -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">AEK</span>
+            <span class="badge badge-green">core</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">Account Encryption Key</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">The root AES-256-GCM key for a device, generated by <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">init()</code> and stored in IndexedDB as a non-extractable <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">CryptoKey</code>. All application data is encrypted with the AEK. It never leaves the device in plaintext — it is always transported wrapped under a PBKDF2-derived key, so the server sees only ciphertext it cannot read.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Used by:</strong> <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">init</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">wrapKey</code>, <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">generateMnemonic</code></p>
+        </div>
+
+        <!-- IV / Nonce -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">IV / Nonce</span>
+            <span class="badge badge-muted">randomness</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">Initialisation Vector &middot; Number Used Once</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">A random byte sequence prepended to every ciphertext. Encrypting the same plaintext twice with the same key but different IVs produces completely different ciphertexts, preventing pattern analysis. In GCM, the IV must never be reused under the same key; conseal generates a fresh cryptographically secure random IV per operation using <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">crypto.getRandomValues</code>.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Format:</strong> 12-byte random prefix embedded in every <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">seal</code> output; stripped automatically on decrypt.</p>
+        </div>
+
+        <!-- ESM -->
+        <div class="card rl-padding-l rl-stack rl-gap-m">
+          <div class="rl-cluster rl-gap-m rl-align-center">
+            <span style="font-family:'SF Mono','Fira Code',monospace;font-size:1rem;font-weight:700;color:var(--color-code-yellow);">ESM</span>
+            <span class="badge badge-muted">module format</span>
+          </div>
+          <p style="font-size:0.75rem;font-weight:600;letter-spacing:0.04em;color:var(--color-muted);">ECMAScript Modules</p>
+          <p style="font-size:0.875rem;color:var(--color-muted);">The native JavaScript module system, using <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">import</code> / <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">export</code> syntax. conseal is ESM-only, which enables tree-shaking: bundlers can statically determine which functions are actually used and drop everything else, keeping your production bundle as small as possible.</p>
+          <p style="font-size:0.8rem;color:var(--color-muted);"><strong style="color:var(--color-text);">Requires:</strong> Node 18+, a modern bundler (Vite, esbuild, webpack 5), or a browser supporting native ESM with <code style="font-size:0.78rem;color:var(--color-code-text);background:var(--color-code-bg);padding:0.1em 0.3em;border-radius:3px;">type="module"</code>.</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
   <!-- ── Footer ────────────────────────────────────────────────── -->
   <footer>
     <div class="rl-stack rl-gap-l rl-padding-xl rl-width-2xl" style="margin: 0 auto;">
@@ -752,6 +867,7 @@
             <a href="#install"   style="font-size: 0.875rem; color: var(--color-muted);">Quick start</a>
             <a href="#api"       style="font-size: 0.875rem; color: var(--color-muted);">API reference</a>
             <a href="#concepts"  style="font-size: 0.875rem; color: var(--color-muted);">Key concepts</a>
+            <a href="#glossary"  style="font-size: 0.875rem; color: var(--color-muted);">Glossary</a>
             <a href="demo.html" style="font-size: 0.875rem; color: var(--color-muted);">Live demo</a>
           </div>
           <div class="rl-stack rl-gap-s">
