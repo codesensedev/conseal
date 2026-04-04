@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generateMnemonic, recoverWithMnemonic } from '../src/mnemonic'
+import { seal, unseal } from '../src/aes'
 
 describe('generateMnemonic', () => {
   it('returns a 24-word mnemonic', () => {
@@ -36,5 +37,17 @@ describe('recoverWithMnemonic', () => {
 
   it('throws on an invalid mnemonic', async () => {
     await expect(recoverWithMnemonic('not valid words at all')).rejects.toThrow()
+  })
+
+  it('round-trip: seal with recovered key, unseal with second recovered key (Conseal API)', async () => {
+    const mnemonic = generateMnemonic()
+    const aek = await recoverWithMnemonic(mnemonic)
+    const plaintext = new TextEncoder().encode('recovery round-trip').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(aek, plaintext)
+
+    // Simulate a fresh session: recover the same key from the mnemonic again
+    const recoveredAek = await recoverWithMnemonic(mnemonic)
+    const result = await unseal(recoveredAek, ciphertext, iv)
+    expect(new TextDecoder().decode(result)).toBe('recovery round-trip')
   })
 })

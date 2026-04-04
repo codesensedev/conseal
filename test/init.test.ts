@@ -3,6 +3,7 @@ import { init, AEK_KEY_ID } from '../src/init'
 import { wrapKey } from '../src/pbkdf2'
 import { loadCryptoKey } from '../src/storage'
 import { generateSecretKey } from '../src/secret-key'
+import { generateAesKey, seal, unseal } from '../src/aes'
 
 beforeEach(async () => {
   await new Promise<void>((resolve, reject) => {
@@ -66,4 +67,18 @@ describe('init', () => {
     const wrongSk = generateSecretKey()
     await expect(init(wrappedKey, salt, 'my-passphrase', wrongSk)).rejects.toThrow()
   }, 15_000)
+
+  it('end-to-end with secret key: seal data, init on new device, unseal data', async () => {
+    const secretKey = generateSecretKey()
+    const aek = await generateAesKey(true)
+    const plaintext = new TextEncoder().encode('protected by secret key').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(aek, plaintext)
+    const { wrappedKey, salt } = await wrapKey('strong-passphrase', aek, secretKey)
+
+    // Simulate new device: init with passphrase + secret key, then load and decrypt
+    await init(wrappedKey, salt, 'strong-passphrase', secretKey)
+    const loadedAek = await loadCryptoKey(AEK_KEY_ID)
+    const result = await unseal(loadedAek!, ciphertext, iv)
+    expect(new TextDecoder().decode(result)).toBe('protected by secret key')
+  }, 20_000)
 })
