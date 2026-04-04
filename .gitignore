@@ -2,3 +2,5 @@
 node_modules/
 dist/
 var/
+.vitest-attachments
+test/__screenshots__

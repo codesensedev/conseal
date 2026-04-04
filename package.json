@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:browser": "vitest run --config vitest.browser.config.ts"
   },
   "files": [
     "dist"
@@ -24,9 +25,12 @@
   },
   "devDependencies": {
     "@scure/bip39": "^2.0.0",
+    "@vitest/browser": "^4.1.2",
+    "@vitest/browser-playwright": "^4.1.2",
     "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.0.0",
     "jsdom": "^29.0.1",
+    "playwright": "^1.51.0",
     "tsup": "^8.0.0",
     "typescript": "^6.0.0",
     "vitest": "^4.1.2"

@@ -2,11 +2,12 @@
 // Copyright (c) 2026 Codesense
 
 /**
- * PBKDF2-SHA256 key derivation and AES-KW key wrapping.
+ * PBKDF2-SHA256 key derivation and AES-GCM key wrapping.
  *
- * wrapKey()        derives a wrapping key from a passphrase + random salt, then uses
- *                  AES-KW to wrap the target CryptoKey. Salt must be stored alongside
- *                  the wrapped key — it is not secret.
+ * wrapKey()        derives a wrapping key from a passphrase + random salt, exports the
+ *                  target CryptoKey as raw bytes, and encrypts them with AES-GCM. A fresh
+ *                  random IV is prepended to the ciphertext — both salt and IV are stored
+ *                  inside the returned wrappedKey and are not secret.
  *
  * unwrapKey()      reverses the process. Always returns extractable: false — the
  *                  unwrapped key is safe to store in IndexedDB and use for encrypt/decrypt.
@@ -26,12 +27,18 @@
  * PBKDF2 parameters: 600,000 iterations, SHA-256, 128-bit random salt per call.
  * This is intentionally slow — it is the defence against offline brute-force if
  * the wrapped key is ever leaked.
+ *
+ * Note: AES-GCM is used instead of AES-KW because WebKit's SubtleCrypto does not
+ * enforce the RFC 3394 integrity check on AES-KW unwrap, allowing wrong credentials
+ * to silently return garbage key material. AES-GCM's authentication tag is validated
+ * consistently across Chromium, Firefox, and WebKit.
  */
 
 import { combinePassphraseAndSecretKey } from './secret-key'
 
 const ITERATIONS = 600_000
 const SALT_LENGTH = 16 // 128-bit salt
+const IV_LENGTH = 12   // 96-bit IV for AES-GCM
 
 async function deriveWrappingKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey(
@@ -44,14 +51,31 @@ async function deriveWrappingKey(passphrase: string, salt: Uint8Array): Promise<
   return crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt: salt as BufferSource, iterations: ITERATIONS, hash: 'SHA-256' },
     keyMaterial,
-    { name: 'AES-KW', length: 256 },
+    { name: 'AES-GCM', length: 256 },
     false,
-    ['wrapKey', 'unwrapKey']
+    ['encrypt', 'decrypt']
   )
 }
 
 async function resolvePassphrase(passphrase: string, secretKey?: Uint8Array): Promise<string> {
   return secretKey ? combinePassphraseAndSecretKey(passphrase, secretKey) : passphrase
+}
+
+/**
+ * Decrypts a wrapped key buffer and imports it as a CryptoKey.
+ * The first IV_LENGTH bytes of wrappedKey are the AES-GCM IV; the rest is ciphertext.
+ * AES-GCM authentication throws on wrong credentials across all engines.
+ */
+async function decryptWrappedKey(
+  wrappingKey: CryptoKey,
+  wrappedKey: ArrayBuffer,
+  extractable: boolean
+): Promise<CryptoKey> {
+  const bytes = new Uint8Array(wrappedKey)
+  const iv = bytes.slice(0, IV_LENGTH)
+  const ciphertext = bytes.slice(IV_LENGTH)
+  const raw = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, wrappingKey, ciphertext)
+  return crypto.subtle.importKey('raw', raw, { name: 'AES-GCM', length: 256 }, extractable, ['encrypt', 'decrypt'])
 }
 
 /** Wraps a CryptoKey with a passphrase (and optional Secret Key). The input key must have extractable: true. */
@@ -66,8 +90,14 @@ export async function wrapKey(
   const effective = await resolvePassphrase(passphrase, secretKey)
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH))
   const wrappingKey = await deriveWrappingKey(effective, salt)
-  const wrappedKey = await crypto.subtle.wrapKey('raw', key, wrappingKey, 'AES-KW')
-  return { wrappedKey, salt }
+  const raw = await crypto.subtle.exportKey('raw', key)
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
+  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrappingKey, raw)
+  // Prepend the IV so unwrapKey needs no extra parameter
+  const wrapped = new Uint8Array(IV_LENGTH + ciphertext.byteLength)
+  wrapped.set(iv, 0)
+  wrapped.set(new Uint8Array(ciphertext), IV_LENGTH)
+  return { wrappedKey: wrapped.buffer, salt }
 }
 
 /** Unwraps a CryptoKey. Always returns extractable: false. */
@@ -79,15 +109,7 @@ export async function unwrapKey(
 ): Promise<CryptoKey> {
   const effective = await resolvePassphrase(passphrase, secretKey)
   const wrappingKey = await deriveWrappingKey(effective, salt)
-  return crypto.subtle.unwrapKey(
-    'raw',
-    wrappedKey,
-    wrappingKey,
-    'AES-KW',
-    { name: 'AES-GCM', length: 256 },
-    false, // extractable: false — safe for IndexedDB storage
-    ['encrypt', 'decrypt']
-  )
+  return decryptWrappedKey(wrappingKey, wrappedKey, false)
 }
 
 /**
@@ -103,15 +125,7 @@ export async function rekey(
 ): Promise<{ wrappedKey: ArrayBuffer; salt: Uint8Array }> {
   const effectiveOld = await resolvePassphrase(oldPassphrase, secretKey)
   const oldWrappingKey = await deriveWrappingKey(effectiveOld, salt)
-  const aek = await crypto.subtle.unwrapKey(
-    'raw',
-    wrappedKey,
-    oldWrappingKey,
-    'AES-KW',
-    { name: 'AES-GCM', length: 256 },
-    true, // extractable: true — needed so wrapKey() can wrap it again
-    ['encrypt', 'decrypt']
-  )
+  const aek = await decryptWrappedKey(oldWrappingKey, wrappedKey, true)
   return wrapKey(newPassphrase, aek, secretKey)
 }
 
@@ -141,14 +155,6 @@ export async function rekeySecretKey(
   }
   const effectiveOld = await resolvePassphrase(passphrase, oldSecretKey)
   const oldWrappingKey = await deriveWrappingKey(effectiveOld, salt)
-  const aek = await crypto.subtle.unwrapKey(
-    'raw',
-    wrappedKey,
-    oldWrappingKey,
-    'AES-KW',
-    { name: 'AES-GCM', length: 256 },
-    true, // extractable: true — needed so wrapKey() can wrap it again
-    ['encrypt', 'decrypt']
-  )
+  const aek = await decryptWrappedKey(oldWrappingKey, wrappedKey, true)
   return wrapKey(passphrase, aek, newSecretKey)
 }

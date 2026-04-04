@@ -135,9 +135,29 @@ import { saveCryptoKey, loadCryptoKey, deleteCryptoKey } from 'conseal'
 
 ```bash
 npm install
-npm test           # run tests
+npm test           # unit tests (Vitest + happy-dom)
 npm run build      # build to dist/
 ```
+
+### Cross-browser tests
+
+SubtleCrypto behaviour is not identical across engines. The browser suite runs the full test suite in real Chromium, Firefox, and WebKit engines via Playwright.
+
+First-time setup — download browser binaries (~300 MB, one-off):
+
+```bash
+npx playwright install
+```
+
+Then run:
+
+```bash
+npm run test:browser
+```
+
+WebKit is the highest-value target: every browser on iOS uses WebKit under the hood regardless of brand, so this provides real Safari/iOS coverage without a device.
+
+Both suites run automatically on CI for every push and pull request to `main`.
 
 ## License
 
