@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { save, load, remove } from '../src/storage'
+import { saveCryptoKey, loadCryptoKey, deleteCryptoKey } from '../src/storage'
 
 /** Clear the database before each test to prevent cross-test contamination. */
 beforeEach(async () => {
@@ -36,27 +36,27 @@ async function makeKey(): Promise<CryptoKey> {
   )
 }
 
-describe('save / load', () => {
+describe('saveCryptoKey / loadCryptoKey', () => {
   it('saves a key and loads it back', async () => {
     const key = await makeKey()
-    await save('my-key', key)
-    const loaded = await load('my-key')
+    await saveCryptoKey('my-key', key)
+    const loaded = await loadCryptoKey('my-key')
     expect(loaded).not.toBeNull()
     expect(loaded!.type).toBe('secret')
     expect(loaded!.algorithm).toMatchObject({ name: 'AES-GCM' })
   })
 
   it('returns null for a key that was never saved', async () => {
-    const result = await load('nonexistent')
+    const result = await loadCryptoKey('nonexistent')
     expect(result).toBeNull()
   })
 
   it('overwrites an existing key when saved with the same name', async () => {
     const key1 = await makeKey()
     const key2 = await makeKey()
-    await save('same-id', key1)
-    await save('same-id', key2)
-    const loaded = await load('same-id')
+    await saveCryptoKey('same-id', key1)
+    await saveCryptoKey('same-id', key2)
+    const loaded = await loadCryptoKey('same-id')
     // key2 should be stored; we verify it encrypts/decrypts correctly
     const iv = crypto.getRandomValues(new Uint8Array(12))
     const data = new TextEncoder().encode('test').buffer as ArrayBuffer
@@ -66,16 +66,16 @@ describe('save / load', () => {
   })
 })
 
-describe('remove', () => {
+describe('deleteCryptoKey', () => {
   it('removes a saved key', async () => {
     const key = await makeKey()
-    await save('to-delete', key)
-    await remove('to-delete')
-    const result = await load('to-delete')
+    await saveCryptoKey('to-delete', key)
+    await deleteCryptoKey('to-delete')
+    const result = await loadCryptoKey('to-delete')
     expect(result).toBeNull()
   })
 
   it('does not throw when removing a non-existent key', async () => {
-    await expect(remove('ghost')).resolves.toBeUndefined()
+    await expect(deleteCryptoKey('ghost')).resolves.toBeUndefined()
   })
 })

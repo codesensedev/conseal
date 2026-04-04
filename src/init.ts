@@ -14,7 +14,7 @@
  */
 
 import { unwrapKey } from './pbkdf2'
-import { save } from './storage'
+import { saveCryptoKey } from './storage'
 
 /** The IndexedDB key id under which the AEK is stored after init(). */
 export const AEK_KEY_ID = 'aek'
@@ -31,5 +31,5 @@ export async function init(
   secretKey?: Uint8Array
 ): Promise<void> {
   const aek = await unwrapKey(passphrase, wrappedKey, salt, secretKey)
-  await save(AEK_KEY_ID, aek)
+  await saveCryptoKey(AEK_KEY_ID, aek)
 }

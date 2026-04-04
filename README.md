@@ -102,14 +102,14 @@ const result = await unseal(key, ciphertext, iv)
 ### IndexedDB key storage
 
 ```ts
-import { save, load, remove } from 'conseal/storage'
+import { saveCryptoKey, loadCryptoKey, deleteCryptoKey } from 'conseal'
 ```
 
 | Function | Description |
 |---|---|
-| `save(name, key)` | Persists a CryptoKey to IndexedDB. |
-| `load(name)` | Loads a CryptoKey. Returns `null` if not found. |
-| `remove(name)` | Deletes a CryptoKey. |
+| `saveCryptoKey(name, key)` | Persists a CryptoKey to IndexedDB. |
+| `loadCryptoKey(name)` | Loads a CryptoKey. Returns `null` if not found. |
+| `deleteCryptoKey(name)` | Deletes a CryptoKey. |
 
 ### Utilities
 

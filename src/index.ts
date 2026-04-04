@@ -6,11 +6,7 @@
  *
  * Import everything from 'conseal':
  *
- *   import { seal, unseal, wrapKey, init, sealMessage, save, load, ... } from 'conseal'
- *
- * Or import storage separately:
- *
- *   import * as storage from 'conseal/storage'
+ *   import { seal, unseal, wrapKey, init, sealMessage, loadCryptoKey, ... } from 'conseal'
  *
  * See docs/usage/ for per-function examples.
  */
@@ -50,4 +46,4 @@ export { toBase64, fromBase64, toBase64Url, fromBase64Url } from './base64'
 export { digest } from './digest'
 
 // IndexedDB key storage
-export { save, load, remove } from './storage'
+export { saveCryptoKey, loadCryptoKey, deleteCryptoKey } from './storage'

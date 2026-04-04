@@ -32,7 +32,7 @@ function openDb(): Promise<IDBDatabase> {
 }
 
 /** Persists a CryptoKey to IndexedDB under the given name. Overwrites if name exists. */
-export async function save(name: string, key: CryptoKey): Promise<void> {
+export async function saveCryptoKey(name: string, key: CryptoKey): Promise<void> {
   const db = await openDb()
   try {
     return await new Promise((resolve, reject) => {
@@ -47,7 +47,7 @@ export async function save(name: string, key: CryptoKey): Promise<void> {
 }
 
 /** Loads a CryptoKey from IndexedDB. Returns null if the name is not found. */
-export async function load(name: string): Promise<CryptoKey | null> {
+export async function loadCryptoKey(name: string): Promise<CryptoKey | null> {
   const db = await openDb()
   try {
     return await new Promise((resolve, reject) => {
@@ -66,7 +66,7 @@ export async function load(name: string): Promise<CryptoKey | null> {
 }
 
 /** Removes a CryptoKey from IndexedDB. No-op if the name does not exist. */
-export async function remove(name: string): Promise<void> {
+export async function deleteCryptoKey(name: string): Promise<void> {
   const db = await openDb()
   try {
     return await new Promise((resolve, reject) => {
