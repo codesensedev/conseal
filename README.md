@@ -79,11 +79,29 @@ const result = await unseal(key, ciphertext, iv)
 
 ### Multi-device private communication (Circle)
 
-Establishes a bounded group of trusted devices that all hold the same Account Encryption Key (AEK). Four functions cover the full device-registration ceremony:
+Establishes a bounded group of trusted devices that all hold the same Account Encryption Key (AEK). The mnemonic is the root of trust — the AEK is always derived from it, so any device can recover the AEK from the mnemonic alone if the passphrase or wrapped key is lost.
+
+Account creation flow:
+
+```ts
+const mnemonic = generateMnemonic()          // show to user — write it down, never store it
+const { wrappedAEK, aekCommitment, deviceId } = await initCircle(mnemonic, passphrase, secretKey)
+// store wrappedAEK + aekCommitment server-side
+```
+
+Recovery flow (lost passphrase or wrapped key):
+
+```ts
+const aek = await recoverWithMnemonic(mnemonic, true)  // re-derive AEK from mnemonic
+const { wrappedKey, salt } = await wrapKey(newPassphrase, aek, newSecretKey)
+// upload new wrappedKey to server
+```
+
+Four functions cover the full device-registration ceremony:
 
 | Function | Description |
 |---|---|
-| `initCircle(passphrase, secretKey)` | Founding device generates the shared AEK, wraps it, and returns `wrappedAEK`, `aekCommitment`, and `deviceId`. |
+| `initCircle(mnemonic, passphrase, secretKey)` | Founding device derives the shared AEK from the mnemonic, wraps it, and returns `wrappedAEK`, `aekCommitment`, and `deviceId`. |
 | `createJoinRequest(deviceMeta?)` | New device generates an ephemeral ECDH key pair. Returns the join request payload, the ephemeral private key (memory-only), and a `verificationCode` to display to the user. |
 | `authorizeJoin(joinRequest, wrappedAEK, passphrase, secretKey)` | Trusted device unwraps its AEK and seals it for the new device via ECDH. Rejects requests older than 5 minutes. |
 | `finalizeJoin(sealedAEK, ephemeralPrivateKey, passphrase, secretKey, aekCommitment)` | New device unseals the AEK, verifies the commitment, and re-wraps it under its own credentials. Throws on commitment mismatch. |
@@ -100,8 +118,8 @@ Establishes a bounded group of trusted devices that all hold the same Account En
 
 | Function | Description |
 |---|---|
-| `generateMnemonic()` | Generates a 24-word recovery phrase. |
-| `recoverWithMnemonic(mnemonic)` | Derives the AEK from the mnemonic. |
+| `generateMnemonic()` | Generates a 24-word recovery phrase (256 bits of entropy). |
+| `recoverWithMnemonic(mnemonic, extractable?)` | Derives the AEK from the mnemonic. Pass `extractable: true` when passing to `initCircle` or `wrapKey`. |
 
 ### Key serialisation (JWK)
 

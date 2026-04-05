@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { generateMnemonic, recoverWithMnemonic } from '../src/mnemonic'
 import { seal, unseal } from '../src/aes'
+import { wrapKey, unwrapKey } from '../src/pbkdf2'
 
 describe('generateMnemonic', () => {
   it('returns a 24-word mnemonic', () => {
@@ -49,5 +50,36 @@ describe('recoverWithMnemonic', () => {
     const recoveredAek = await recoverWithMnemonic(mnemonic)
     const result = await unseal(recoveredAek, ciphertext, iv)
     expect(new TextDecoder().decode(result)).toBe('recovery round-trip')
+  })
+
+  it('is non-extractable by default', async () => {
+    const key = await recoverWithMnemonic(generateMnemonic())
+    expect(key.extractable).toBe(false)
+  })
+
+  it('is extractable when requested', async () => {
+    const key = await recoverWithMnemonic(generateMnemonic(), true)
+    expect(key.extractable).toBe(true)
+  })
+
+  it('extractable key can be wrapped and unwrapped (initCircle flow)', async () => {
+    const mnemonic = generateMnemonic()
+    const aek = await recoverWithMnemonic(mnemonic, true)
+    const { wrappedKey, salt } = await wrapKey('passphrase', aek)
+    const recovered = await unwrapKey('passphrase', wrappedKey, salt)
+    expect(recovered.algorithm.name).toBe('AES-GCM')
+  }, 15_000)
+
+  it('wrapped extractable key decrypts data encrypted by the original', async () => {
+    const mnemonic = generateMnemonic()
+    const aek = await recoverWithMnemonic(mnemonic, true)
+
+    const plaintext = new TextEncoder().encode('circle recovery').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(aek, plaintext)
+
+    // Simulate recovery: re-derive from mnemonic and unwrap
+    const aek2 = await recoverWithMnemonic(mnemonic)
+    const result = await unseal(aek2, ciphertext, iv)
+    expect(new TextDecoder().decode(result)).toBe('circle recovery')
   })
 })

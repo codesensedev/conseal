@@ -26,8 +26,11 @@ export function generateMnemonic(): string {
 /**
  * Derives a deterministic AES-256-GCM CryptoKey from a BIP-39 mnemonic.
  * Throws if the mnemonic is invalid or not in the BIP-39 word list.
+ *
+ * Pass extractable: true when the key must be wrapped before storage —
+ * e.g. when passing it to initCircle().
  */
-export async function recoverWithMnemonic(mnemonic: string): Promise<CryptoKey> {
+export async function recoverWithMnemonic(mnemonic: string, extractable = false): Promise<CryptoKey> {
   if (!validateMnemonic(mnemonic, wordlist)) {
     throw new Error('Invalid mnemonic: phrase does not pass BIP-39 checksum validation')
   }
@@ -38,7 +41,7 @@ export async function recoverWithMnemonic(mnemonic: string): Promise<CryptoKey> 
     'raw',
     entropy,
     { name: 'AES-GCM', length: 256 },
-    false, // extractable: false — key is for use only, never exported
+    extractable,
     ['encrypt', 'decrypt']
   )
 }

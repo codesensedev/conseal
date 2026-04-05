@@ -8,6 +8,7 @@ import {
   deriveVerificationCode,
   type WrappedAEK,
 } from '../src/circle'
+import { generateMnemonic, recoverWithMnemonic } from '../src/mnemonic'
 import {
   initCircle as initCircleFromIndex,
   createJoinRequest as createJoinRequestFromIndex,
@@ -20,6 +21,10 @@ import {
 
 function makeSecretKey(): Uint8Array {
   return crypto.getRandomValues(new Uint8Array(16))
+}
+
+function makeMnemonic(): string {
+  return generateMnemonic()
 }
 
 // ---------- deriveVerificationCode ----------
@@ -58,7 +63,7 @@ describe('deriveVerificationCode', () => {
 describe('initCircle', () => {
   it('returns a wrappedAEK with wrappedKey and salt', async () => {
     const sk = makeSecretKey()
-    const { wrappedAEK } = await initCircle('passphrase', sk)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'passphrase', sk)
     expect(wrappedAEK.wrappedKey).toBeInstanceOf(ArrayBuffer)
     expect(wrappedAEK.wrappedKey.byteLength).toBeGreaterThan(0)
     expect(wrappedAEK.salt).toBeInstanceOf(Uint8Array)
@@ -67,39 +72,58 @@ describe('initCircle', () => {
 
   it('returns aekCommitment as a 32-byte ArrayBuffer (SHA-256)', async () => {
     const sk = makeSecretKey()
-    const { aekCommitment } = await initCircle('passphrase', sk)
+    const { aekCommitment } = await initCircle(makeMnemonic(), 'passphrase', sk)
     expect(aekCommitment).toBeInstanceOf(ArrayBuffer)
     expect(aekCommitment.byteLength).toBe(32)
   })
 
   it('returns a UUID deviceId', async () => {
     const sk = makeSecretKey()
-    const { deviceId } = await initCircle('passphrase', sk)
+    const { deviceId } = await initCircle(makeMnemonic(), 'passphrase', sk)
     expect(deviceId).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
     )
   })
 
-  it('produces different wrappedAEKs on each call', async () => {
+  it('same mnemonic produces the same aekCommitment (deterministic AEK)', async () => {
+    const mnemonic = makeMnemonic()
     const sk = makeSecretKey()
-    const a = await initCircle('passphrase', sk)
-    const b = await initCircle('passphrase', sk)
-    // Different AEK each time → different wrappedKey bytes
+    const a = await initCircle(mnemonic, 'passphrase', sk)
+    const b = await initCircle(mnemonic, 'passphrase', sk)
+    expect(Array.from(new Uint8Array(a.aekCommitment))).toEqual(
+      Array.from(new Uint8Array(b.aekCommitment))
+    )
+  })
+
+  it('same mnemonic produces different wrappedKey bytes each call (fresh salt)', async () => {
+    const mnemonic = makeMnemonic()
+    const sk = makeSecretKey()
+    const a = await initCircle(mnemonic, 'passphrase', sk)
+    const b = await initCircle(mnemonic, 'passphrase', sk)
     expect(Array.from(new Uint8Array(a.wrappedAEK.wrappedKey))).not.toEqual(
       Array.from(new Uint8Array(b.wrappedAEK.wrappedKey))
     )
   })
 
+  it('different mnemonics produce different aekCommitments', async () => {
+    const sk = makeSecretKey()
+    const a = await initCircle(makeMnemonic(), 'passphrase', sk)
+    const b = await initCircle(makeMnemonic(), 'passphrase', sk)
+    expect(Array.from(new Uint8Array(a.aekCommitment))).not.toEqual(
+      Array.from(new Uint8Array(b.aekCommitment))
+    )
+  })
+
   it('wrappedAEK can be unwrapped with the same passphrase + secretKey', async () => {
     const sk = makeSecretKey()
-    const { wrappedAEK } = await initCircle('my-passphrase', sk)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'my-passphrase', sk)
     const aek = await unwrapKey('my-passphrase', wrappedAEK.wrappedKey, wrappedAEK.salt, sk)
     expect(aek.algorithm.name).toBe('AES-GCM')
   })
 
   it('wrappedAEK cannot be unwrapped with wrong passphrase', async () => {
     const sk = makeSecretKey()
-    const { wrappedAEK } = await initCircle('correct', sk)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'correct', sk)
     await expect(
       unwrapKey('wrong', wrappedAEK.wrappedKey, wrappedAEK.salt, sk)
     ).rejects.toThrow()
@@ -108,10 +132,26 @@ describe('initCircle', () => {
   it('wrappedAEK cannot be unwrapped with wrong secretKey', async () => {
     const sk1 = makeSecretKey()
     const sk2 = makeSecretKey()
-    const { wrappedAEK } = await initCircle('passphrase', sk1)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'passphrase', sk1)
     await expect(
       unwrapKey('passphrase', wrappedAEK.wrappedKey, wrappedAEK.salt, sk2)
     ).rejects.toThrow()
+  })
+
+  it('mnemonic recovery produces the same AEK that was stored in the circle', async () => {
+    const mnemonic = makeMnemonic()
+    const sk = makeSecretKey()
+    const { wrappedAEK } = await initCircle(mnemonic, 'passphrase', sk)
+
+    // Unwrap the stored AEK
+    const storedAek = await unwrapKey('passphrase', wrappedAEK.wrappedKey, wrappedAEK.salt, sk, true)
+    const storedRaw = await crypto.subtle.exportKey('raw', storedAek)
+
+    // Recover via mnemonic (simulates lost passphrase / fresh device)
+    const recoveredAek = await recoverWithMnemonic(mnemonic, true)
+    const recoveredRaw = await crypto.subtle.exportKey('raw', recoveredAek)
+
+    expect(Array.from(new Uint8Array(storedRaw))).toEqual(Array.from(new Uint8Array(recoveredRaw)))
   })
 })
 
@@ -162,7 +202,7 @@ describe('createJoinRequest', () => {
 describe('authorizeJoin', () => {
   it('returns a SealedAEK with ciphertext, iv, ephemeralPublicKey', async () => {
     const sk = makeSecretKey()
-    const { wrappedAEK } = await initCircle('passphrase', sk)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'passphrase', sk)
     const { request } = await createJoinRequest()
 
     const sealed = await authorizeJoin(request, wrappedAEK, 'passphrase', sk)
@@ -174,10 +214,9 @@ describe('authorizeJoin', () => {
 
   it('throws when the join request is older than 5 minutes', async () => {
     const sk = makeSecretKey()
-    const { wrappedAEK } = await initCircle('passphrase', sk)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'passphrase', sk)
     const { request } = await createJoinRequest()
 
-    // Backdate the request
     const staleRequest = {
       ...request,
       createdAt: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
@@ -190,7 +229,7 @@ describe('authorizeJoin', () => {
 
   it('throws on wrong passphrase', async () => {
     const sk = makeSecretKey()
-    const { wrappedAEK } = await initCircle('correct', sk)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'correct', sk)
     const { request } = await createJoinRequest()
 
     await expect(authorizeJoin(request, wrappedAEK, 'wrong', sk)).rejects.toThrow()
@@ -199,7 +238,7 @@ describe('authorizeJoin', () => {
   it('throws on wrong secretKey', async () => {
     const sk1 = makeSecretKey()
     const sk2 = makeSecretKey()
-    const { wrappedAEK } = await initCircle('passphrase', sk1)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'passphrase', sk1)
     const { request } = await createJoinRequest()
 
     await expect(authorizeJoin(request, wrappedAEK, 'passphrase', sk2)).rejects.toThrow()
@@ -211,7 +250,7 @@ describe('authorizeJoin', () => {
 describe('finalizeJoin', () => {
   it('returns a wrappedAEK that can be unwrapped', async () => {
     const sk1 = makeSecretKey()
-    const { wrappedAEK, aekCommitment } = await initCircle('passphrase1', sk1)
+    const { wrappedAEK, aekCommitment } = await initCircle(makeMnemonic(), 'passphrase1', sk1)
     const { request, ephemeralPrivateKey } = await createJoinRequest()
     const sealedAEK = await authorizeJoin(request, wrappedAEK, 'passphrase1', sk1)
 
@@ -224,18 +263,16 @@ describe('finalizeJoin', () => {
       aekCommitment
     )
 
-    // Must unwrap without error using the new device's credentials
     const aek = await unwrapKey('passphrase2', newWrappedAEK.wrappedKey, newWrappedAEK.salt, sk2)
     expect(aek.algorithm.name).toBe('AES-GCM')
   })
 
   it('throws when aekCommitment does not match (tampered SealedAEK)', async () => {
     const sk1 = makeSecretKey()
-    const { wrappedAEK, aekCommitment } = await initCircle('passphrase1', sk1)
+    const { wrappedAEK } = await initCircle(makeMnemonic(), 'passphrase1', sk1)
     const { request, ephemeralPrivateKey } = await createJoinRequest()
     const sealedAEK = await authorizeJoin(request, wrappedAEK, 'passphrase1', sk1)
 
-    // Use a different, wrong commitment
     const wrongCommitment = crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer
 
     const sk2 = makeSecretKey()
@@ -246,11 +283,10 @@ describe('finalizeJoin', () => {
 
   it('throws when decrypting with the wrong private key', async () => {
     const sk1 = makeSecretKey()
-    const { wrappedAEK, aekCommitment } = await initCircle('passphrase1', sk1)
+    const { wrappedAEK, aekCommitment } = await initCircle(makeMnemonic(), 'passphrase1', sk1)
     const { request } = await createJoinRequest()
     const sealedAEK = await authorizeJoin(request, wrappedAEK, 'passphrase1', sk1)
 
-    // Use a different ephemeral private key
     const { ephemeralPrivateKey: wrongKey } = await createJoinRequest()
     const sk2 = makeSecretKey()
     await expect(
@@ -263,13 +299,14 @@ describe('finalizeJoin', () => {
 
 describe('full ceremony', () => {
   it('founding and joining devices share the same AEK after the ceremony', async () => {
+    const mnemonic = makeMnemonic()
     const passphrase1 = 'founding-passphrase'
     const passphrase2 = 'new-device-passphrase'
     const sk1 = makeSecretKey()
     const sk2 = makeSecretKey()
 
     // Founding device creates the circle
-    const { wrappedAEK: foundingWrappedAEK, aekCommitment } = await initCircle(passphrase1, sk1)
+    const { wrappedAEK: foundingWrappedAEK, aekCommitment } = await initCircle(mnemonic, passphrase1, sk1)
 
     // New device initiates the join
     const { request, ephemeralPrivateKey, verificationCode } = await createJoinRequest({
@@ -304,11 +341,12 @@ describe('full ceremony', () => {
   })
 
   it('three devices all share the same AEK', async () => {
+    const mnemonic = makeMnemonic()
     const sk1 = makeSecretKey()
     const sk2 = makeSecretKey()
     const sk3 = makeSecretKey()
 
-    const { wrappedAEK: w1, aekCommitment } = await initCircle('p1', sk1)
+    const { wrappedAEK: w1, aekCommitment } = await initCircle(mnemonic, 'p1', sk1)
 
     // Device 2 joins via device 1
     const { request: req2, ephemeralPrivateKey: esk2 } = await createJoinRequest()

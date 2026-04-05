@@ -24,11 +24,12 @@
  * No custom cryptography — correct composition of audited primitives only.
  */
 
-import { generateAesKey, importAesKey } from './aes'
+import { importAesKey } from './aes'
 import { wrapKey, unwrapKey } from './pbkdf2'
 import { generateECDHKeyPair, sealMessage, unsealMessage } from './ecdh'
 import { importPublicKeyFromJwk, exportPublicKeyAsJwk } from './jwk'
 import { digest } from './digest'
+import { recoverWithMnemonic } from './mnemonic'
 
 /** Maximum age of a join request before it is considered stale (5 minutes). */
 const JOIN_TTL_MS = 5 * 60 * 1000
@@ -94,17 +95,21 @@ export async function deriveVerificationCode(ephemeralPublicKey: JsonWebKey): Pr
 /**
  * Called once by the founding device when creating a new account.
  *
- * Generates the shared AEK, publishes its SHA-256 commitment (so joining
- * devices can verify the AEK was not substituted), and wraps the AEK under
- * the founding device's own passphrase + secretKey.
+ * Derives the shared AEK from the mnemonic (so it can always be recovered),
+ * publishes its SHA-256 commitment (so joining devices can verify the AEK was
+ * not substituted), and wraps the AEK under the founding device's own
+ * passphrase + secretKey.
  *
- * The app stores wrappedAEK and aekCommitment on the server.
+ * The mnemonic is the root of trust — it must be shown to the user at account
+ * creation and never stored. The app stores wrappedAEK and aekCommitment on
+ * the server.
  */
 export async function initCircle(
+  mnemonic: string,
   passphrase: string,
   secretKey: Uint8Array
 ): Promise<{ wrappedAEK: WrappedAEK; aekCommitment: ArrayBuffer; deviceId: string }> {
-  const aek = await generateAesKey(true) // extractable: true — must be wrappable
+  const aek = await recoverWithMnemonic(mnemonic, true) // extractable: true — must be wrappable
   const rawAEK = await crypto.subtle.exportKey('raw', aek)
   const aekCommitment = await digest(rawAEK)
   const { wrappedKey, salt } = await wrapKey(passphrase, aek, secretKey)
