@@ -33,8 +33,10 @@ export async function sealEnvelope(
     ['encrypt', 'decrypt']
   )
   const { ciphertext, iv } = await seal(dek, plaintext)
+  // Raw DEK bytes live briefly in memory inside wrapKey; JavaScript provides no
+  // reliable way to zero them, but they are never returned or stored.
   const { wrappedKey, salt } = await wrapKey(passcode, dek)
-  return { ciphertext, iv, wrappedKey, salt }
+  return { version: 1, ciphertext, iv, wrappedKey, salt }
 }
 
 /** Decrypts a SealedEnvelope using the passcode. Throws if the passcode is wrong. */
@@ -48,6 +50,8 @@ export async function unsealEnvelope(
 
 /** The fields produced by sealEnvelope(), ready for JSON serialisation. */
 export interface SealedEnvelope {
+  /** Format version — always 1 for envelopes produced by this library. */
+  version: 1
   ciphertext: ArrayBuffer
   iv: Uint8Array
   wrappedKey: ArrayBuffer
@@ -60,28 +64,44 @@ export interface SealedEnvelope {
  */
 export function encodeEnvelope(envelope: SealedEnvelope): string {
   return JSON.stringify({
+    version:    envelope.version,
     ciphertext: toBase64(envelope.ciphertext),
     iv:         toBase64(envelope.iv),
     wrappedKey: toBase64(envelope.wrappedKey),
     salt:       toBase64(envelope.salt),
-  }, null, 2)
+  })
 }
 
 /**
  * Deserialises a JSON string produced by encodeEnvelope() back to a SealedEnvelope.
  * Throws SyntaxError if the string is not valid JSON.
- * Throws TypeError if required fields are missing or not strings.
+ * Throws TypeError if required fields are missing, the wrong type, or the version is unsupported.
  */
 export function decodeEnvelope(json: string): SealedEnvelope {
   const p = JSON.parse(json) as Record<string, unknown>
-  const required = ['ciphertext', 'iv', 'wrappedKey', 'salt'] as const
-  for (const field of required) {
+
+  if (p['version'] !== 1) {
+    throw new TypeError(`Invalid envelope: unsupported or missing 'version' field (got ${JSON.stringify(p['version'])})`)
+  }
+
+  const binaryFields = ['ciphertext', 'iv', 'wrappedKey', 'salt'] as const
+  for (const field of binaryFields) {
     if (typeof p[field] !== 'string') {
       throw new TypeError(`Invalid envelope: missing or invalid '${field}' field`)
     }
   }
+
   const validated = p as { ciphertext: string; iv: string; wrappedKey: string; salt: string }
+
+  // Validate base64 content before decoding to give a clear error on malformed input
+  for (const field of binaryFields) {
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(validated[field])) {
+      throw new TypeError(`Invalid envelope: '${field}' is not valid base64`)
+    }
+  }
+
   return {
+    version:    1,
     ciphertext: fromBase64(validated.ciphertext).buffer as ArrayBuffer,
     iv:         fromBase64(validated.iv),
     wrappedKey: fromBase64(validated.wrappedKey).buffer as ArrayBuffer,

@@ -47,3 +47,13 @@ export { digest } from './digest'
 
 // IndexedDB key storage
 export { saveCryptoKey, loadCryptoKey, deleteCryptoKey } from './storage'
+
+// Multi-device private communication (Circle)
+export {
+  initCircle,
+  createJoinRequest,
+  authorizeJoin,
+  finalizeJoin,
+  deriveVerificationCode,
+} from './circle'
+export type { WrappedAEK, JoinRequest, SealedAEK } from './circle'

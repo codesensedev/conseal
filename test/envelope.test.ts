@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { sealEnvelope, unsealEnvelope, encodeEnvelope, decodeEnvelope } from '../src/envelope'
+import { sealEnvelope, unsealEnvelope, encodeEnvelope, decodeEnvelope, type SealedEnvelope } from '../src/envelope'
 
 describe('sealEnvelope / unsealEnvelope', () => {
   it('round-trips plaintext with the correct passcode', async () => {
@@ -32,6 +32,12 @@ describe('sealEnvelope / unsealEnvelope', () => {
     expect(wrappedKey).toBeInstanceOf(ArrayBuffer)
     expect(salt).toBeInstanceOf(Uint8Array)
   }, 10_000)
+
+  it('includes version: 1', async () => {
+    const plaintext = new TextEncoder().encode('test').buffer as ArrayBuffer
+    const envelope = await sealEnvelope(plaintext, 'pass')
+    expect(envelope.version).toBe(1)
+  }, 10_000)
 })
 
 describe('encodeEnvelope / decodeEnvelope', () => {
@@ -51,11 +57,20 @@ describe('encodeEnvelope / decodeEnvelope', () => {
     const sealed = await sealEnvelope(plaintext, 'pass')
     const json = encodeEnvelope(sealed)
     const parsed = JSON.parse(json)
+    expect(parsed).toHaveProperty('version', 1)
     expect(parsed).toHaveProperty('ciphertext')
     expect(parsed).toHaveProperty('iv')
     expect(parsed).toHaveProperty('wrappedKey')
     expect(parsed).toHaveProperty('salt')
   }, 15_000)
+
+  it('encoded envelope is compact JSON (no extra whitespace)', async () => {
+    const plaintext = new TextEncoder().encode('test').buffer as ArrayBuffer
+    const sealed = await sealEnvelope(plaintext, 'pass')
+    const json = encodeEnvelope(sealed)
+    expect(json).not.toMatch(/\n/)
+    expect(json).not.toMatch(/  /)
+  }, 10_000)
 
   it('decoded envelope can be used to unseal', async () => {
     const plaintext = new TextEncoder().encode('end to end').buffer as ArrayBuffer
@@ -70,14 +85,26 @@ describe('encodeEnvelope / decodeEnvelope', () => {
     expect(() => decodeEnvelope('not json')).toThrow(SyntaxError)
   })
 
-  it('decodeEnvelope throws on missing fields', () => {
-    expect(() => decodeEnvelope('{}')).toThrow(TypeError)
-    expect(() => decodeEnvelope('{"ciphertext":"abc"}')).toThrow(TypeError)
-    expect(() => decodeEnvelope('{"ciphertext":"a","iv":"b","wrappedKey":"c"}')).toThrow(TypeError)
+  it('decodeEnvelope throws on missing or wrong version', () => {
+    const base = { ciphertext: 'YQ==', iv: 'YQ==', wrappedKey: 'YQ==', salt: 'YQ==' }
+    expect(() => decodeEnvelope(JSON.stringify(base))).toThrow(/version/)
+    expect(() => decodeEnvelope(JSON.stringify({ ...base, version: 2 }))).toThrow(/version/)
+    expect(() => decodeEnvelope(JSON.stringify({ ...base, version: 'one' }))).toThrow(/version/)
   })
 
-  it('decodeEnvelope throws on non-string fields', () => {
-    expect(() => decodeEnvelope('{"ciphertext":123,"iv":"b","wrappedKey":"c","salt":"d"}')).toThrow(TypeError)
-    expect(() => decodeEnvelope('{"ciphertext":"a","iv":null,"wrappedKey":"c","salt":"d"}')).toThrow(TypeError)
+  it('decodeEnvelope throws on missing binary fields', () => {
+    expect(() => decodeEnvelope(JSON.stringify({ version: 1 }))).toThrow(TypeError)
+    expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: 'YQ==' }))).toThrow(TypeError)
+    expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: 'YQ==', iv: 'YQ==', wrappedKey: 'YQ==' }))).toThrow(TypeError)
+  })
+
+  it('decodeEnvelope throws on non-string binary fields', () => {
+    expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: 123, iv: 'YQ==', wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(TypeError)
+    expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: 'YQ==', iv: null, wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(TypeError)
+  })
+
+  it('decodeEnvelope throws on invalid base64 content', () => {
+    expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: '!!!', iv: 'YQ==', wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(/not valid base64/)
+    expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: 'YQ==', iv: 'not base64!!', wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(/not valid base64/)
   })
 })

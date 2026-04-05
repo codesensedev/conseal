@@ -8,6 +8,13 @@ import {
   deriveVerificationCode,
   type WrappedAEK,
 } from '../src/circle'
+import {
+  initCircle as initCircleFromIndex,
+  createJoinRequest as createJoinRequestFromIndex,
+  authorizeJoin as authorizeJoinFromIndex,
+  finalizeJoin as finalizeJoinFromIndex,
+  deriveVerificationCode as deriveVerificationCodeFromIndex,
+} from '../src/index'
 
 // ---------- helpers ----------
 
@@ -322,5 +329,17 @@ describe('full ceremony', () => {
     const [r1, r2, r3] = await Promise.all([raw(w1, 'p1', sk1), raw(w2, 'p2', sk2), raw(w3, 'p3', sk3)])
     expect(r1).toEqual(r2)
     expect(r1).toEqual(r3)
+  })
+})
+
+// ---------- Main entry point exports ----------
+
+describe('circle exports from main index', () => {
+  it('all Circle functions are exported from conseal', () => {
+    expect(initCircleFromIndex).toBe(initCircle)
+    expect(createJoinRequestFromIndex).toBe(createJoinRequest)
+    expect(authorizeJoinFromIndex).toBe(authorizeJoin)
+    expect(finalizeJoinFromIndex).toBe(finalizeJoin)
+    expect(deriveVerificationCodeFromIndex).toBe(deriveVerificationCode)
   })
 })
