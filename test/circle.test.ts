@@ -1,0 +1,326 @@
+import { describe, it, expect, vi } from 'vitest'
+import { unwrapKey } from '../src/pbkdf2'
+import {
+  initCircle,
+  createJoinRequest,
+  authorizeJoin,
+  finalizeJoin,
+  deriveVerificationCode,
+  type WrappedAEK,
+} from '../src/circle'
+
+// ---------- helpers ----------
+
+function makeSecretKey(): Uint8Array {
+  return crypto.getRandomValues(new Uint8Array(16))
+}
+
+// ---------- deriveVerificationCode ----------
+
+describe('deriveVerificationCode', () => {
+  it('returns a string matching XX-XX-XX format', async () => {
+    const { request } = await createJoinRequest()
+    const code = await deriveVerificationCode(request.ephemeralPublicKey)
+    expect(code).toMatch(/^[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}$/)
+  })
+
+  it('returns the same code for the same JWK', async () => {
+    const { request } = await createJoinRequest()
+    const code1 = await deriveVerificationCode(request.ephemeralPublicKey)
+    const code2 = await deriveVerificationCode(request.ephemeralPublicKey)
+    expect(code1).toBe(code2)
+  })
+
+  it('returns different codes for different key pairs', async () => {
+    const { request: req1 } = await createJoinRequest()
+    const { request: req2 } = await createJoinRequest()
+    const code1 = await deriveVerificationCode(req1.ephemeralPublicKey)
+    const code2 = await deriveVerificationCode(req2.ephemeralPublicKey)
+    expect(code1).not.toBe(code2)
+  })
+
+  it('matches the code returned by createJoinRequest', async () => {
+    const { request, verificationCode } = await createJoinRequest()
+    const derived = await deriveVerificationCode(request.ephemeralPublicKey)
+    expect(derived).toBe(verificationCode)
+  })
+})
+
+// ---------- initCircle ----------
+
+describe('initCircle', () => {
+  it('returns a wrappedAEK with wrappedKey and salt', async () => {
+    const sk = makeSecretKey()
+    const { wrappedAEK } = await initCircle('passphrase', sk)
+    expect(wrappedAEK.wrappedKey).toBeInstanceOf(ArrayBuffer)
+    expect(wrappedAEK.wrappedKey.byteLength).toBeGreaterThan(0)
+    expect(wrappedAEK.salt).toBeInstanceOf(Uint8Array)
+    expect(wrappedAEK.salt.byteLength).toBe(16)
+  })
+
+  it('returns aekCommitment as a 32-byte ArrayBuffer (SHA-256)', async () => {
+    const sk = makeSecretKey()
+    const { aekCommitment } = await initCircle('passphrase', sk)
+    expect(aekCommitment).toBeInstanceOf(ArrayBuffer)
+    expect(aekCommitment.byteLength).toBe(32)
+  })
+
+  it('returns a UUID deviceId', async () => {
+    const sk = makeSecretKey()
+    const { deviceId } = await initCircle('passphrase', sk)
+    expect(deviceId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+    )
+  })
+
+  it('produces different wrappedAEKs on each call', async () => {
+    const sk = makeSecretKey()
+    const a = await initCircle('passphrase', sk)
+    const b = await initCircle('passphrase', sk)
+    // Different AEK each time → different wrappedKey bytes
+    expect(Array.from(new Uint8Array(a.wrappedAEK.wrappedKey))).not.toEqual(
+      Array.from(new Uint8Array(b.wrappedAEK.wrappedKey))
+    )
+  })
+
+  it('wrappedAEK can be unwrapped with the same passphrase + secretKey', async () => {
+    const sk = makeSecretKey()
+    const { wrappedAEK } = await initCircle('my-passphrase', sk)
+    const aek = await unwrapKey('my-passphrase', wrappedAEK.wrappedKey, wrappedAEK.salt, sk)
+    expect(aek.algorithm.name).toBe('AES-GCM')
+  })
+
+  it('wrappedAEK cannot be unwrapped with wrong passphrase', async () => {
+    const sk = makeSecretKey()
+    const { wrappedAEK } = await initCircle('correct', sk)
+    await expect(
+      unwrapKey('wrong', wrappedAEK.wrappedKey, wrappedAEK.salt, sk)
+    ).rejects.toThrow()
+  })
+
+  it('wrappedAEK cannot be unwrapped with wrong secretKey', async () => {
+    const sk1 = makeSecretKey()
+    const sk2 = makeSecretKey()
+    const { wrappedAEK } = await initCircle('passphrase', sk1)
+    await expect(
+      unwrapKey('passphrase', wrappedAEK.wrappedKey, wrappedAEK.salt, sk2)
+    ).rejects.toThrow()
+  })
+})
+
+// ---------- createJoinRequest ----------
+
+describe('createJoinRequest', () => {
+  it('returns a request with deviceId, ephemeralPublicKey, createdAt', async () => {
+    const { request } = await createJoinRequest()
+    expect(request.deviceId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+    )
+    expect(request.ephemeralPublicKey.kty).toBe('EC')
+    expect(request.ephemeralPublicKey.crv).toBe('P-256')
+    expect(request.ephemeralPublicKey.d).toBeUndefined() // private component never exposed
+    expect(() => new Date(request.createdAt)).not.toThrow()
+  })
+
+  it('includes deviceMeta when provided', async () => {
+    const { request } = await createJoinRequest({ name: 'iPhone 15', platform: 'ios' })
+    expect(request.deviceMeta).toEqual({ name: 'iPhone 15', platform: 'ios' })
+  })
+
+  it('omits deviceMeta when not provided', async () => {
+    const { request } = await createJoinRequest()
+    expect(request.deviceMeta).toBeUndefined()
+  })
+
+  it('returns an ephemeral private key CryptoKey', async () => {
+    const { ephemeralPrivateKey } = await createJoinRequest()
+    expect(ephemeralPrivateKey.type).toBe('private')
+    expect(ephemeralPrivateKey.algorithm.name).toBe('ECDH')
+  })
+
+  it('returns a verification code in XX-XX-XX format', async () => {
+    const { verificationCode } = await createJoinRequest()
+    expect(verificationCode).toMatch(/^[0-9A-F]{2}-[0-9A-F]{2}-[0-9A-F]{2}$/)
+  })
+
+  it('generates a unique deviceId on each call', async () => {
+    const { request: r1 } = await createJoinRequest()
+    const { request: r2 } = await createJoinRequest()
+    expect(r1.deviceId).not.toBe(r2.deviceId)
+  })
+})
+
+// ---------- authorizeJoin ----------
+
+describe('authorizeJoin', () => {
+  it('returns a SealedAEK with ciphertext, iv, ephemeralPublicKey', async () => {
+    const sk = makeSecretKey()
+    const { wrappedAEK } = await initCircle('passphrase', sk)
+    const { request } = await createJoinRequest()
+
+    const sealed = await authorizeJoin(request, wrappedAEK, 'passphrase', sk)
+    expect(sealed.ciphertext).toBeInstanceOf(ArrayBuffer)
+    expect(sealed.iv).toBeInstanceOf(Uint8Array)
+    expect(sealed.iv.byteLength).toBe(12)
+    expect(sealed.ephemeralPublicKey.kty).toBe('EC')
+  })
+
+  it('throws when the join request is older than 5 minutes', async () => {
+    const sk = makeSecretKey()
+    const { wrappedAEK } = await initCircle('passphrase', sk)
+    const { request } = await createJoinRequest()
+
+    // Backdate the request
+    const staleRequest = {
+      ...request,
+      createdAt: new Date(Date.now() - 6 * 60 * 1000).toISOString(),
+    }
+
+    await expect(authorizeJoin(staleRequest, wrappedAEK, 'passphrase', sk)).rejects.toThrow(
+      /expired/
+    )
+  })
+
+  it('throws on wrong passphrase', async () => {
+    const sk = makeSecretKey()
+    const { wrappedAEK } = await initCircle('correct', sk)
+    const { request } = await createJoinRequest()
+
+    await expect(authorizeJoin(request, wrappedAEK, 'wrong', sk)).rejects.toThrow()
+  })
+
+  it('throws on wrong secretKey', async () => {
+    const sk1 = makeSecretKey()
+    const sk2 = makeSecretKey()
+    const { wrappedAEK } = await initCircle('passphrase', sk1)
+    const { request } = await createJoinRequest()
+
+    await expect(authorizeJoin(request, wrappedAEK, 'passphrase', sk2)).rejects.toThrow()
+  })
+})
+
+// ---------- finalizeJoin ----------
+
+describe('finalizeJoin', () => {
+  it('returns a wrappedAEK that can be unwrapped', async () => {
+    const sk1 = makeSecretKey()
+    const { wrappedAEK, aekCommitment } = await initCircle('passphrase1', sk1)
+    const { request, ephemeralPrivateKey } = await createJoinRequest()
+    const sealedAEK = await authorizeJoin(request, wrappedAEK, 'passphrase1', sk1)
+
+    const sk2 = makeSecretKey()
+    const { wrappedAEK: newWrappedAEK } = await finalizeJoin(
+      sealedAEK,
+      ephemeralPrivateKey,
+      'passphrase2',
+      sk2,
+      aekCommitment
+    )
+
+    // Must unwrap without error using the new device's credentials
+    const aek = await unwrapKey('passphrase2', newWrappedAEK.wrappedKey, newWrappedAEK.salt, sk2)
+    expect(aek.algorithm.name).toBe('AES-GCM')
+  })
+
+  it('throws when aekCommitment does not match (tampered SealedAEK)', async () => {
+    const sk1 = makeSecretKey()
+    const { wrappedAEK, aekCommitment } = await initCircle('passphrase1', sk1)
+    const { request, ephemeralPrivateKey } = await createJoinRequest()
+    const sealedAEK = await authorizeJoin(request, wrappedAEK, 'passphrase1', sk1)
+
+    // Use a different, wrong commitment
+    const wrongCommitment = crypto.getRandomValues(new Uint8Array(32)).buffer as ArrayBuffer
+
+    const sk2 = makeSecretKey()
+    await expect(
+      finalizeJoin(sealedAEK, ephemeralPrivateKey, 'passphrase2', sk2, wrongCommitment)
+    ).rejects.toThrow(/commitment mismatch/)
+  })
+
+  it('throws when decrypting with the wrong private key', async () => {
+    const sk1 = makeSecretKey()
+    const { wrappedAEK, aekCommitment } = await initCircle('passphrase1', sk1)
+    const { request } = await createJoinRequest()
+    const sealedAEK = await authorizeJoin(request, wrappedAEK, 'passphrase1', sk1)
+
+    // Use a different ephemeral private key
+    const { ephemeralPrivateKey: wrongKey } = await createJoinRequest()
+    const sk2 = makeSecretKey()
+    await expect(
+      finalizeJoin(sealedAEK, wrongKey, 'passphrase2', sk2, aekCommitment)
+    ).rejects.toThrow()
+  })
+})
+
+// ---------- End-to-end ceremony ----------
+
+describe('full ceremony', () => {
+  it('founding and joining devices share the same AEK after the ceremony', async () => {
+    const passphrase1 = 'founding-passphrase'
+    const passphrase2 = 'new-device-passphrase'
+    const sk1 = makeSecretKey()
+    const sk2 = makeSecretKey()
+
+    // Founding device creates the circle
+    const { wrappedAEK: foundingWrappedAEK, aekCommitment } = await initCircle(passphrase1, sk1)
+
+    // New device initiates the join
+    const { request, ephemeralPrivateKey, verificationCode } = await createJoinRequest({
+      name: 'Laptop',
+      platform: 'web',
+    })
+
+    // Trusted device derives the same code from the request and confirms it matches
+    const codeFromRequest = await deriveVerificationCode(request.ephemeralPublicKey)
+    expect(codeFromRequest).toBe(verificationCode)
+
+    // Trusted device authorizes (after out-of-band code confirmation)
+    const sealedAEK = await authorizeJoin(request, foundingWrappedAEK, passphrase1, sk1)
+
+    // New device finalizes
+    const { wrappedAEK: newWrappedAEK } = await finalizeJoin(
+      sealedAEK,
+      ephemeralPrivateKey,
+      passphrase2,
+      sk2,
+      aekCommitment
+    )
+
+    // Both devices unwrap and export their AEK — must be identical
+    const aek1 = await unwrapKey(passphrase1, foundingWrappedAEK.wrappedKey, foundingWrappedAEK.salt, sk1, true)
+    const raw1 = await crypto.subtle.exportKey('raw', aek1)
+
+    const aek2 = await unwrapKey(passphrase2, newWrappedAEK.wrappedKey, newWrappedAEK.salt, sk2, true)
+    const raw2 = await crypto.subtle.exportKey('raw', aek2)
+
+    expect(Array.from(new Uint8Array(raw1))).toEqual(Array.from(new Uint8Array(raw2)))
+  })
+
+  it('three devices all share the same AEK', async () => {
+    const sk1 = makeSecretKey()
+    const sk2 = makeSecretKey()
+    const sk3 = makeSecretKey()
+
+    const { wrappedAEK: w1, aekCommitment } = await initCircle('p1', sk1)
+
+    // Device 2 joins via device 1
+    const { request: req2, ephemeralPrivateKey: esk2 } = await createJoinRequest()
+    const sealed2 = await authorizeJoin(req2, w1, 'p1', sk1)
+    const { wrappedAEK: w2 } = await finalizeJoin(sealed2, esk2, 'p2', sk2, aekCommitment)
+
+    // Device 3 joins via device 2 (any trusted device can authorize)
+    const { request: req3, ephemeralPrivateKey: esk3 } = await createJoinRequest()
+    const sealed3 = await authorizeJoin(req3, w2, 'p2', sk2)
+    const { wrappedAEK: w3 } = await finalizeJoin(sealed3, esk3, 'p3', sk3, aekCommitment)
+
+    // All three share the same AEK
+    const raw = async (w: WrappedAEK, p: string, sk: Uint8Array) => {
+      const k = await unwrapKey(p, w.wrappedKey, w.salt, sk, true)
+      return Array.from(new Uint8Array(await crypto.subtle.exportKey('raw', k)))
+    }
+
+    const [r1, r2, r3] = await Promise.all([raw(w1, 'p1', sk1), raw(w2, 'p2', sk2), raw(w3, 'p3', sk3)])
+    expect(r1).toEqual(r2)
+    expect(r1).toEqual(r3)
+  })
+})

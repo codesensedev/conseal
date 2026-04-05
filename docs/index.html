@@ -366,6 +366,7 @@
         <nav class="rl-cluster rl-gap-l" style="font-size: 0.875rem; color: var(--color-muted);">
           <a href="#install"   style="color: inherit;">Install</a>
           <a href="#api"       style="color: inherit;">API</a>
+          <a href="#circle"    style="color: inherit;">Circle</a>
           <a href="#concepts"  style="color: inherit;">Concepts</a>
           <a href="#glossary"  style="color: inherit;">Glossary</a>
           <a href="demo.html" style="color: inherit;">Demo</a>
@@ -392,7 +393,7 @@
       <span class="hero-eyebrow">__VERSION__ &nbsp;·&nbsp; TypeScript &nbsp;·&nbsp; Web Crypto API &nbsp;·&nbsp; Zero dependencies</span>
 
       <div class="rl-stack rl-gap-l rl-align-center">
-        <h1>Browser-side zero-knowledge<br>cryptography.</h1>
+        <h1>Zero-knowledge cryptography and private communication.</h1>
         <p class="hero-sub">AES-256-GCM, ECDH, ECDSA, PBKDF2, and BIP-39 mnemonic recovery — all built on the native Web Crypto API. No native addons. No heavy dependencies. Works in any modern browser or Node 18+.</p>
       </div>
 
@@ -638,6 +639,25 @@
           </div>
         </div>
 
+        <!-- Circle -->
+        <div id="circle">
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
+            <span class="section-label">Circle — multi-device private communication</span>
+          </div>
+          <div class="card" style="overflow-x:auto;">
+            <table class="api-table">
+              <thead><tr><th>Function</th><th>Description</th></tr></thead>
+              <tbody>
+                <tr><td class="fn">initCircle(passphrase, secretKey)</td><td class="desc">Founding device generates the shared AEK and wraps it. Returns <code>wrappedAEK</code>, <code>aekCommitment</code>, and <code>deviceId</code>.</td></tr>
+                <tr><td class="fn">createJoinRequest(deviceMeta?)</td><td class="desc">New device generates an ephemeral ECDH key pair. Returns the join request payload, the ephemeral private key (hold in memory only), and a <code>verificationCode</code> to display prominently.</td></tr>
+                <tr><td class="fn">authorizeJoin(joinRequest, wrappedAEK, passphrase, secretKey)</td><td class="desc">Trusted device unwraps its AEK and seals it for the new device via ECDH. Rejects requests older than 5 minutes.</td></tr>
+                <tr><td class="fn">finalizeJoin(sealedAEK, ephemeralPrivateKey, passphrase, secretKey, aekCommitment)</td><td class="desc">New device unseals the AEK, verifies it against <code>aekCommitment</code>, and re-wraps it under its own credentials. Throws on commitment mismatch.</td></tr>
+                <tr><td class="fn">deriveVerificationCode(ephemeralPublicKey)</td><td class="desc">Derives a <code>XX-XX-XX</code> hex verification code from a public key. Both devices must display matching codes before approval to prevent MITM.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- JWK / init / mnemonic / utils -->
         <div>
           <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">
@@ -877,6 +897,7 @@
             <a href="#api" style="font-size: 0.875rem; color: var(--color-muted);">ECDSA P-256</a>
             <a href="#api" style="font-size: 0.875rem; color: var(--color-muted);">PBKDF2 / Envelope</a>
             <a href="#api" style="font-size: 0.875rem; color: var(--color-muted);">BIP-39 Mnemonic</a>
+            <a href="#circle" style="font-size: 0.875rem; color: var(--color-muted);">Circle</a>
           </div>
           <div class="rl-stack rl-gap-s">
             <strong style="font-size: 0.8rem; color: var(--color-text);">Project</strong>

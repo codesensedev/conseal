@@ -8,8 +8,7 @@
 <h1 align="center">Conseal</h1>
 
 <p align="center">
-  Browser-side zero-knowledge cryptography library.<br>
-  All crypto runs in the browser via <a href="https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto">SubtleCrypto</a> — the server never sees plaintext or key material.
+  Zero-knowledge cryptography and private communication.
 </p>
 
 ---
@@ -77,6 +76,18 @@ const result = await unseal(key, ciphertext, iv)
 | `unsealEnvelope(envelope, passcode)` | Decrypts with the passcode. |
 | `encodeEnvelope(envelope)` | Serialises a `SealedEnvelope` to JSON. |
 | `decodeEnvelope(json)` | Deserialises JSON back to a `SealedEnvelope`. |
+
+### Multi-device private communication (Circle)
+
+Establishes a bounded group of trusted devices that all hold the same Account Encryption Key (AEK). Four functions cover the full device-registration ceremony:
+
+| Function | Description |
+|---|---|
+| `initCircle(passphrase, secretKey)` | Founding device generates the shared AEK, wraps it, and returns `wrappedAEK`, `aekCommitment`, and `deviceId`. |
+| `createJoinRequest(deviceMeta?)` | New device generates an ephemeral ECDH key pair. Returns the join request payload, the ephemeral private key (memory-only), and a `verificationCode` to display to the user. |
+| `authorizeJoin(joinRequest, wrappedAEK, passphrase, secretKey)` | Trusted device unwraps its AEK and seals it for the new device via ECDH. Rejects requests older than 5 minutes. |
+| `finalizeJoin(sealedAEK, ephemeralPrivateKey, passphrase, secretKey, aekCommitment)` | New device unseals the AEK, verifies the commitment, and re-wraps it under its own credentials. Throws on commitment mismatch. |
+| `deriveVerificationCode(ephemeralPublicKey)` | Derives a `XX-XX-XX` hex code from a public key. Both devices must show matching codes before approval to prevent MITM. |
 
 ### Device initialisation
 

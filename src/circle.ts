@@ -1,0 +1,213 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later OR Commercial
+// Copyright (c) 2026 Codesense
+
+/**
+ * conseal/circle — Multi-device private communication.
+ *
+ * Establishes a bounded group of trusted devices that all hold the same
+ * Account Encryption Key (AEK). Encrypted data written on any device can be
+ * decrypted on any other device in the circle.
+ *
+ * Four exported functions cover the full device-registration ceremony:
+ *
+ *   initCircle()        — founding device generates the shared AEK
+ *   createJoinRequest() — new device generates an ephemeral ECDH key pair
+ *   authorizeJoin()     — trusted device seals the AEK for the new device
+ *   finalizeJoin()      — new device unseals and re-wraps the AEK
+ *
+ * secretKey (Uint8Array) is required for all four functions — passphrase-only
+ * wrapping does not meet the security bar for multi-device sync. Each device
+ * must hold a Secret Key via one of the three SK strategies (OS keychain,
+ * IndexedDB non-extractable, or WebAuthn PRF).
+ *
+ * Composes: aes.ts, pbkdf2.ts, ecdh.ts, jwk.ts, digest.ts
+ * No custom cryptography — correct composition of audited primitives only.
+ */
+
+import { generateAesKey, importAesKey } from './aes'
+import { wrapKey, unwrapKey } from './pbkdf2'
+import { generateECDHKeyPair, sealMessage, unsealMessage } from './ecdh'
+import { importPublicKeyFromJwk, exportPublicKeyAsJwk } from './jwk'
+import { digest } from './digest'
+
+/** Maximum age of a join request before it is considered stale (5 minutes). */
+const JOIN_TTL_MS = 5 * 60 * 1000
+
+// ---------- Types ----------
+
+/** Wrapped AEK — opaque blob stored server-side per device. */
+export interface WrappedAEK {
+  wrappedKey: ArrayBuffer
+  salt: Uint8Array
+}
+
+/** Serializable join request payload sent by a new device to the backend. */
+export interface JoinRequest {
+  deviceId: string
+  ephemeralPublicKey: JsonWebKey
+  createdAt: string // ISO 8601
+  deviceMeta?: { name?: string; platform?: string }
+}
+
+/** AEK sealed for a specific device's ephemeral public key via ECDH. */
+export interface SealedAEK {
+  ciphertext: ArrayBuffer
+  iv: Uint8Array
+  ephemeralPublicKey: JsonWebKey // sealMessage's ephemeral key — not the joining device's
+}
+
+// ---------- Internal helpers ----------
+
+function buffersEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
+  const ua = new Uint8Array(a)
+  const ub = new Uint8Array(b)
+  if (ua.length !== ub.length) return false
+  let result = 0
+  for (let i = 0; i < ua.length; i++) result |= (ua[i] as number) ^ (ub[i] as number)
+  return result === 0
+}
+
+// ---------- Exported helpers ----------
+
+/**
+ * Derives a human-readable verification code from an ECDH public key JWK.
+ *
+ * Exports the key as its uncompressed point bytes (65 bytes for P-256),
+ * SHA-256 hashes them, and formats the first 3 bytes as uppercase hex pairs
+ * separated by dashes: e.g. "A3-K9-F2".
+ *
+ * Both the new device (createJoinRequest) and the authorizing device
+ * (authorizeJoin) call this with the same JWK and must get the same code.
+ * The user confirms the codes match out-of-band before approval proceeds.
+ */
+export async function deriveVerificationCode(ephemeralPublicKey: JsonWebKey): Promise<string> {
+  const key = await importPublicKeyFromJwk(ephemeralPublicKey, 'ECDH')
+  const raw = await crypto.subtle.exportKey('raw', key)
+  const hash = await digest(raw)
+  const bytes = new Uint8Array(hash)
+  const hex = (b: number) => b.toString(16).padStart(2, '0').toUpperCase()
+  return `${hex(bytes[0]!)}-${hex(bytes[1]!)}-${hex(bytes[2]!)}`
+}
+
+// ---------- Ceremony API ----------
+
+/**
+ * Called once by the founding device when creating a new account.
+ *
+ * Generates the shared AEK, publishes its SHA-256 commitment (so joining
+ * devices can verify the AEK was not substituted), and wraps the AEK under
+ * the founding device's own passphrase + secretKey.
+ *
+ * The app stores wrappedAEK and aekCommitment on the server.
+ */
+export async function initCircle(
+  passphrase: string,
+  secretKey: Uint8Array
+): Promise<{ wrappedAEK: WrappedAEK; aekCommitment: ArrayBuffer; deviceId: string }> {
+  const aek = await generateAesKey(true) // extractable: true — must be wrappable
+  const rawAEK = await crypto.subtle.exportKey('raw', aek)
+  const aekCommitment = await digest(rawAEK)
+  const { wrappedKey, salt } = await wrapKey(passphrase, aek, secretKey)
+  const deviceId = crypto.randomUUID()
+  return { wrappedAEK: { wrappedKey, salt }, aekCommitment, deviceId }
+}
+
+/**
+ * Called by a new device that wants to join the circle.
+ *
+ * Generates an ephemeral ECDH P-256 key pair for the one-time ceremony.
+ * The ephemeral private key is returned to the caller and must be held in
+ * memory only — never persisted — until finalizeJoin completes.
+ *
+ * The verification code is derived from the ephemeral public key and must
+ * be displayed prominently so the user can confirm it matches the code shown
+ * on the authorizing device.
+ */
+export async function createJoinRequest(
+  deviceMeta?: { name?: string; platform?: string }
+): Promise<{
+  request: JoinRequest
+  ephemeralPrivateKey: CryptoKey
+  verificationCode: string
+}> {
+  const { publicKey, privateKey } = await generateECDHKeyPair()
+  const ephemeralPublicKey = await exportPublicKeyAsJwk(publicKey)
+  const verificationCode = await deriveVerificationCode(ephemeralPublicKey)
+  const deviceId = crypto.randomUUID()
+  const request: JoinRequest = {
+    deviceId,
+    ephemeralPublicKey,
+    createdAt: new Date().toISOString(),
+    ...(deviceMeta ? { deviceMeta } : {}),
+  }
+  return { request, ephemeralPrivateKey: privateKey, verificationCode }
+}
+
+/**
+ * Called by a trusted device to approve a new device joining the circle.
+ *
+ * Rejects stale join requests (older than 5 minutes) regardless of server
+ * challenge state. The caller must present the verification code from
+ * joinRequest.ephemeralPublicKey and require explicit user confirmation that
+ * it matches the code on the new device before calling this function —
+ * calling without confirmation bypasses the primary MITM defence.
+ *
+ * Unwraps the AEK and seals its raw bytes for the new device's ephemeral
+ * public key via ECDH. Only the ephemeral private key held by the new device
+ * can open it.
+ */
+export async function authorizeJoin(
+  joinRequest: JoinRequest,
+  wrappedAEK: WrappedAEK,
+  passphrase: string,
+  secretKey: Uint8Array
+): Promise<SealedAEK> {
+  const age = Date.now() - new Date(joinRequest.createdAt).getTime()
+  if (age > JOIN_TTL_MS) {
+    throw new Error('authorizeJoin: join request has expired (older than 5 minutes)')
+  }
+
+  // Unwrap extractable so raw bytes can be transferred via ECDH
+  const aek = await unwrapKey(passphrase, wrappedAEK.wrappedKey, wrappedAEK.salt, secretKey, true)
+  const rawAEK = await crypto.subtle.exportKey('raw', aek)
+
+  const recipientPublicKey = await importPublicKeyFromJwk(joinRequest.ephemeralPublicKey, 'ECDH')
+  const { ciphertext, iv, ephemeralPublicKey } = await sealMessage(recipientPublicKey, rawAEK)
+  return { ciphertext, iv, ephemeralPublicKey }
+}
+
+/**
+ * Called by the new device after authorization.
+ *
+ * Unseals the AEK using the ephemeral private key generated in
+ * createJoinRequest, verifies it against aekCommitment (SHA-256 of the raw
+ * AEK published by initCircle), then re-wraps it under the new device's own
+ * passphrase + secretKey. The ephemeral private key is not needed after this
+ * call and should be discarded.
+ *
+ * Throws if the commitment check fails — the AEK was substituted or tampered
+ * with in transit. Do not use the returned wrappedAEK if this throws.
+ */
+export async function finalizeJoin(
+  sealedAEK: SealedAEK,
+  ephemeralPrivateKey: CryptoKey,
+  passphrase: string,
+  secretKey: Uint8Array,
+  aekCommitment: ArrayBuffer
+): Promise<{ wrappedAEK: WrappedAEK }> {
+  const rawAEK = await unsealMessage(
+    ephemeralPrivateKey,
+    sealedAEK.ciphertext,
+    sealedAEK.iv,
+    sealedAEK.ephemeralPublicKey
+  )
+
+  const actualCommitment = await digest(rawAEK)
+  if (!buffersEqual(actualCommitment, aekCommitment)) {
+    throw new Error('finalizeJoin: AEK commitment mismatch — key may have been tampered with')
+  }
+
+  const aek = await importAesKey(rawAEK, true) // extractable: true for wrapKey
+  const { wrappedKey, salt } = await wrapKey(passphrase, aek, secretKey)
+  return { wrappedAEK: { wrappedKey, salt } }
+}

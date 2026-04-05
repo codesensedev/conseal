@@ -100,16 +100,21 @@ export async function wrapKey(
   return { wrappedKey: wrapped.buffer, salt }
 }
 
-/** Unwraps a CryptoKey. Always returns extractable: false. */
+/**
+ * Unwraps a CryptoKey. Returns extractable: false by default.
+ * Pass extractable: true only when the raw key bytes are needed for transfer
+ * (e.g. circle join ceremony) — export and discard as quickly as possible.
+ */
 export async function unwrapKey(
   passphrase: string,
   wrappedKey: ArrayBuffer,
   salt: Uint8Array,
-  secretKey?: Uint8Array
+  secretKey?: Uint8Array,
+  extractable = false
 ): Promise<CryptoKey> {
   const effective = await resolvePassphrase(passphrase, secretKey)
   const wrappingKey = await deriveWrappingKey(effective, salt)
-  return decryptWrappedKey(wrappingKey, wrappedKey, false)
+  return decryptWrappedKey(wrappingKey, wrappedKey, extractable)
 }
 
 /**
