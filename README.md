@@ -39,8 +39,8 @@ const result = await unseal(key, ciphertext, iv)
 
 | Function | Description |
 |---|---|
-| `seal(key, plaintext)` | Encrypts with a random 96-bit IV. Returns `{ ciphertext, iv }`. |
-| `unseal(key, ciphertext, iv)` | Decrypts. Throws on tampered data. |
+| `seal(key, plaintext, additionalData?)` | Encrypts with a random 96-bit IV. Returns `{ ciphertext, iv }`. |
+| `unseal(key, ciphertext, iv, additionalData?)` | Decrypts. Throws on tampered data or AAD mismatch. |
 | `generateAesKey(extractable?)` | Generates a random AES-256 key. |
 | `importAesKey(raw, extractable?)` | Imports raw key bytes as a CryptoKey. |
 

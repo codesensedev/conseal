@@ -558,8 +558,8 @@
             <table class="api-table">
               <thead><tr><th>Function</th><th>Description</th></tr></thead>
               <tbody>
-                <tr><td class="fn">seal(data, key)</td><td class="desc">Encrypt a <code>Uint8Array</code> with an AES-GCM key. Returns IV + ciphertext.</td></tr>
-                <tr><td class="fn">unseal(ct, key)</td><td class="desc">Decrypt. Throws <code>DOMException</code> if the ciphertext has been tampered with.</td></tr>
+                <tr><td class="fn">seal(key, plaintext, additionalData?)</td><td class="desc">Encrypt with a random 96-bit IV. Optional <code>additionalData</code> binds context to the auth tag (AAD). Returns <code>{ ciphertext, iv }</code>.</td></tr>
+                <tr><td class="fn">unseal(key, ciphertext, iv, additionalData?)</td><td class="desc">Decrypt. Throws if the ciphertext has been tampered with or <code>additionalData</code> does not match.</td></tr>
                 <tr><td class="fn">generateAesKey()</td><td class="desc">Generate a fresh extractable AES-256-GCM <code>CryptoKey</code>.</td></tr>
                 <tr><td class="fn">importAesKey(raw)</td><td class="desc">Import 32 raw bytes as an AES-GCM key.</td></tr>
               </tbody>

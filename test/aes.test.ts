@@ -68,6 +68,38 @@ describe('seal / unseal', () => {
     const wrongIv = new Uint8Array(8) // 8 bytes instead of 12
     await expect(unseal(key, ciphertext, wrongIv)).rejects.toThrow()
   })
+
+  it('round-trips plaintext with additionalData', async () => {
+    const key = await makeKey()
+    const plaintext = new TextEncoder().encode('hello conseal').buffer as ArrayBuffer
+    const aad = new TextEncoder().encode('record-id-42')
+    const { ciphertext, iv } = await seal(key, plaintext, aad)
+    const result = await unseal(key, ciphertext, iv, aad)
+    expect(new TextDecoder().decode(result)).toBe('hello conseal')
+  })
+
+  it('throws when additionalData does not match on unseal', async () => {
+    const key = await makeKey()
+    const plaintext = new TextEncoder().encode('hello').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(key, plaintext, new TextEncoder().encode('record-a'))
+    await expect(unseal(key, ciphertext, iv, new TextEncoder().encode('record-b'))).rejects.toThrow()
+  })
+
+  it('throws when additionalData is omitted on unseal but was used on seal', async () => {
+    const key = await makeKey()
+    const plaintext = new TextEncoder().encode('hello').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(key, plaintext, new TextEncoder().encode('record-id'))
+    await expect(unseal(key, ciphertext, iv)).rejects.toThrow()
+  })
+
+  it('accepts ArrayBuffer as additionalData', async () => {
+    const key = await makeKey()
+    const plaintext = new TextEncoder().encode('hello').buffer as ArrayBuffer
+    const aad = new TextEncoder().encode('ctx').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(key, plaintext, aad)
+    const result = await unseal(key, ciphertext, iv, aad)
+    expect(new TextDecoder().decode(result)).toBe('hello')
+  })
 })
 
 describe('generateAesKey', () => {

@@ -17,10 +17,13 @@
 /** Encrypts plaintext with AES-256-GCM. Returns ciphertext (with auth tag appended) and IV. */
 export async function seal(
   key: CryptoKey,
-  plaintext: ArrayBuffer
+  plaintext: ArrayBuffer,
+  additionalData?: ArrayBuffer | Uint8Array
 ): Promise<{ ciphertext: ArrayBuffer; iv: Uint8Array }> {
   const iv = crypto.getRandomValues(new Uint8Array(12)) // 96-bit IV — required for AES-GCM
-  const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource, tagLength: 128 }, key, plaintext)
+  const algorithm: AesGcmParams = { name: 'AES-GCM', iv: iv as BufferSource, tagLength: 128 }
+  if (additionalData !== undefined) algorithm.additionalData = additionalData as BufferSource
+  const ciphertext = await crypto.subtle.encrypt(algorithm, key, plaintext)
   return { ciphertext, iv }
 }
 
@@ -28,12 +31,15 @@ export async function seal(
 export async function unseal(
   key: CryptoKey,
   ciphertext: ArrayBuffer,
-  iv: Uint8Array
+  iv: Uint8Array,
+  additionalData?: ArrayBuffer | Uint8Array
 ): Promise<ArrayBuffer> {
   if (iv.byteLength !== 12) {
     throw new TypeError(`AES-GCM IV must be 12 bytes (96 bits), got ${iv.byteLength}`)
   }
-  return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource, tagLength: 128 }, key, ciphertext)
+  const algorithm: AesGcmParams = { name: 'AES-GCM', iv: iv as BufferSource, tagLength: 128 }
+  if (additionalData !== undefined) algorithm.additionalData = additionalData as BufferSource
+  return crypto.subtle.decrypt(algorithm, key, ciphertext)
 }
 
 /**
