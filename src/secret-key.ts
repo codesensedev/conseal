@@ -8,13 +8,13 @@
  *                                  at account setup and store device-side (localStorage)
  *                                  plus an offline copy for recovery.
  *
- * combinePassphraseAndSecretKey()  SHA-256 hashes passphrase + ':' + base64(secretKey)
- *                                  into a 64-char hex string used as the PBKDF2 input.
- *                                  Neither factor is recoverable from the combined value.
+ * combinePassphraseAndSecretKey()  HMAC-SHA-256(key=secretKey, msg=passphrase),
+ *                                  hex-encoded. The secretKey is used as the HMAC key
+ *                                  and the passphrase as the message, which is the
+ *                                  standard construction for combining two inputs.
+ *                                  Neither factor is recoverable from the result.
+ *                                  The output is fed into PBKDF2 as the password.
  */
-
-import { digest } from './digest'
-import { toBase64 } from './base64'
 
 /** Generates a random 128-bit (16-byte) secret key. */
 export function generateSecretKey(): Uint8Array {
@@ -23,15 +23,25 @@ export function generateSecretKey(): Uint8Array {
 
 /**
  * Combines a passphrase and secret key into a single opaque string for PBKDF2.
- * SHA-256(passphrase + ':' + base64(secretKey)), hex-encoded.
+ * HMAC-SHA-256(key=secretKey, msg=passphrase), hex-encoded.
+ *
+ * Using HMAC with the secretKey as the key is the standard construction for
+ * combining two inputs — it avoids length-extension concerns and provides
+ * cryptographic binding of both factors.
  */
 export async function combinePassphraseAndSecretKey(
   passphrase: string,
   secretKey: Uint8Array
 ): Promise<string> {
-  const input = `${passphrase}:${toBase64(secretKey)}`
-  const hash = await digest(new TextEncoder().encode(input))
-  return Array.from(new Uint8Array(hash))
+  const hmacKey = await crypto.subtle.importKey(
+    'raw',
+    secretKey.buffer.slice(secretKey.byteOffset, secretKey.byteOffset + secretKey.byteLength) as ArrayBuffer,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  )
+  const mac = await crypto.subtle.sign('HMAC', hmacKey, new TextEncoder().encode(passphrase))
+  return Array.from(new Uint8Array(mac))
     .map(b => b.toString(16).padStart(2, '0'))
     .join('')
 }

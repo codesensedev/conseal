@@ -96,6 +96,18 @@ describe('init', () => {
     await expect(unseal(stored!, ciphertext, iv)).rejects.toThrow()
   }, 25_000)
 
+  it('end-to-end without secret key: seal data, init on new device, unseal data', async () => {
+    const aek = await generateAesKey(true)
+    const plaintext = new TextEncoder().encode('no secret key path').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(aek, plaintext)
+    const { wrappedKey, salt } = await wrapKey('my-passphrase', aek)
+
+    await init(wrappedKey, salt, 'my-passphrase')
+    const loadedAek = await loadCryptoKey(AEK_KEY_ID)
+    const result = await unseal(loadedAek!, ciphertext, iv)
+    expect(new TextDecoder().decode(result)).toBe('no secret key path')
+  }, 20_000)
+
   it('end-to-end with secret key: seal data, init on new device, unseal data', async () => {
     const secretKey = generateSecretKey()
     const aek = await generateAesKey(true)

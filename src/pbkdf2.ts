@@ -35,6 +35,7 @@
  */
 
 import { combinePassphraseAndSecretKey } from './secret-key'
+import { buffersEqual } from './compare'
 
 const ITERATIONS = 600_000
 const SALT_LENGTH = 16 // 128-bit salt
@@ -99,7 +100,7 @@ export async function wrapKey(
   const wrapped = new Uint8Array(IV_LENGTH + ciphertext.byteLength)
   wrapped.set(iv, 0)
   wrapped.set(new Uint8Array(ciphertext), IV_LENGTH)
-  return { wrappedKey: wrapped.buffer, salt }
+  return { wrappedKey: wrapped.buffer.slice(wrapped.byteOffset, wrapped.byteOffset + wrapped.byteLength), salt }
 }
 
 /**
@@ -147,13 +148,6 @@ export async function rekey(
  * @param wrappedKey   - the currently wrapped AEK
  * @param salt         - the salt used when the AEK was wrapped
  */
-function uint8ArraysEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) result |= (a[i] as number) ^ (b[i] as number)
-  return result === 0
-}
-
 export async function rekeySecretKey(
   passphrase: string,
   oldSecretKey: Uint8Array,
@@ -161,7 +155,7 @@ export async function rekeySecretKey(
   wrappedKey: ArrayBuffer,
   salt: Uint8Array
 ): Promise<{ wrappedKey: ArrayBuffer; salt: Uint8Array }> {
-  if (uint8ArraysEqual(oldSecretKey, newSecretKey)) {
+  if (buffersEqual(oldSecretKey, newSecretKey)) {
     throw new Error('rekeySecretKey: oldSecretKey and newSecretKey must be different')
   }
   const effectiveOld = await resolvePassphrase(passphrase, oldSecretKey)

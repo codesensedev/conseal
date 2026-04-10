@@ -106,11 +106,13 @@ export function decodeEnvelope(json: string): SealedEnvelope {
     }
   }
 
+  const ct = fromBase64(validated.ciphertext)
+  const wk = fromBase64(validated.wrappedKey)
   return {
     version:    1,
-    ciphertext: fromBase64(validated.ciphertext).buffer as ArrayBuffer,
+    ciphertext: ct.buffer.slice(ct.byteOffset, ct.byteOffset + ct.byteLength) as ArrayBuffer,
     iv:         fromBase64(validated.iv),
-    wrappedKey: fromBase64(validated.wrappedKey).buffer as ArrayBuffer,
+    wrappedKey: wk.buffer.slice(wk.byteOffset, wk.byteOffset + wk.byteLength) as ArrayBuffer,
     salt:       fromBase64(validated.salt),
   }
 }

@@ -64,4 +64,15 @@ describe('sealMessage / unsealMessage', () => {
     const plaintext = new TextEncoder().encode('test').buffer as ArrayBuffer
     await expect(sealMessage(p384KeyPair.publicKey, plaintext)).rejects.toThrow()
   })
+
+  it('throws when IV is tampered', async () => {
+    const recipient = await generateECDHKeyPair()
+    const plaintext = new TextEncoder().encode('secret').buffer as ArrayBuffer
+    const sealed = await sealMessage(recipient.publicKey, plaintext)
+    const tamperedIv = new Uint8Array(sealed.iv)
+    tamperedIv[0] ^= 0xff
+    await expect(
+      unsealMessage(recipient.privateKey, sealed.ciphertext, tamperedIv, sealed.ephemeralPublicKey)
+    ).rejects.toThrow()
+  })
 })

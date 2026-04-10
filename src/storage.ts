@@ -20,11 +20,19 @@ const DB_NAME = 'conseal-keys'
 const STORE = 'keys'
 const VERSION = 1
 
+/** The IndexedDB key id under which the Account Encryption Key is stored after init(). */
+export const AEK_KEY_ID = 'aek'
+
 function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, VERSION)
     req.onupgradeneeded = () => {
-      req.result.createObjectStore(STORE)
+      try {
+        req.result.createObjectStore(STORE)
+      } catch (e) {
+        req.result.close()
+        reject(e)
+      }
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)

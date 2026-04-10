@@ -30,6 +30,7 @@ import { generateECDHKeyPair, sealMessage, unsealMessage } from './ecdh'
 import { importPublicKeyFromJwk, exportPublicKeyAsJwk } from './jwk'
 import { digest } from './digest'
 import { recoverWithMnemonic } from './mnemonic'
+import { buffersEqual } from './compare'
 
 /** Maximum age of a join request before it is considered stale (5 minutes). */
 const JOIN_TTL_MS = 5 * 60 * 1000
@@ -64,29 +65,21 @@ export interface SealedAEK {
   ephemeralPublicKey: JsonWebKey // sealMessage's ephemeral key — not the joining device's
 }
 
-// ---------- Internal helpers ----------
-
-function buffersEqual(a: ArrayBuffer, b: ArrayBuffer): boolean {
-  const ua = new Uint8Array(a)
-  const ub = new Uint8Array(b)
-  if (ua.length !== ub.length) return false
-  let result = 0
-  for (let i = 0; i < ua.length; i++) result |= (ua[i] as number) ^ (ub[i] as number)
-  return result === 0
-}
-
 // ---------- Exported helpers ----------
 
 /**
  * Derives a human-readable verification code from an ECDH public key JWK.
  *
  * Exports the key as its uncompressed point bytes (65 bytes for P-256),
- * SHA-256 hashes them, and formats the first 3 bytes as uppercase hex pairs
- * separated by dashes: e.g. "A3-K9-F2".
+ * SHA-256 hashes them, and formats the first 4 bytes as uppercase hex pairs
+ * separated by dashes: e.g. "A3-4F-9C-12" (32 bits / ~4 billion possible codes).
  *
  * Both the new device (createJoinRequest) and the authorizing device
  * (authorizeJoin) call this with the same JWK and must get the same code.
  * The user confirms the codes match out-of-band before approval proceeds.
+ *
+ * 32-bit space makes brute-force injection of a matching fake key pair
+ * infeasible within the 5-minute TTL window.
  */
 export async function deriveVerificationCode(ephemeralPublicKey: JsonWebKey): Promise<string> {
   const key = await importPublicKeyFromJwk(ephemeralPublicKey, 'ECDH')
@@ -94,7 +87,7 @@ export async function deriveVerificationCode(ephemeralPublicKey: JsonWebKey): Pr
   const hash = await digest(raw)
   const bytes = new Uint8Array(hash)
   const hex = (b: number) => b.toString(16).padStart(2, '0').toUpperCase()
-  return `${hex(bytes[0]!)}-${hex(bytes[1]!)}-${hex(bytes[2]!)}`
+  return `${hex(bytes[0]!)}-${hex(bytes[1]!)}-${hex(bytes[2]!)}-${hex(bytes[3]!)}`
 }
 
 // ---------- Ceremony API ----------
@@ -160,30 +153,33 @@ export async function createJoinRequest(
 /**
  * Called by a trusted device to approve a new device joining the circle.
  *
- * Rejects stale join requests (older than 5 minutes) regardless of server
- * challenge state. The caller must present the verification code from
+ * Rejects stale join requests based on `serverReceivedAt` — the Unix-ms
+ * timestamp recorded by the server when the join request first arrived.
+ * Callers MUST pass the server-stamped time, not `joinRequest.createdAt`,
+ * which is set by the joining device and can be forged.
+ *
+ * The caller must present the verification code from
  * joinRequest.ephemeralPublicKey and require explicit user confirmation that
  * it matches the code on the new device before calling this function —
  * calling without confirmation bypasses the primary MITM defence.
  *
- * **TTL caveat:** the age check relies on `joinRequest.createdAt`, which is
- * set by the joining device. A compromised or malicious device can forge this
- * timestamp to bypass the 5-minute window. For real TTL enforcement, callers
- * must independently timestamp requests when they first arrive at the server
- * and reject them based on that server-stamped time before passing the request
- * to this function.
- *
  * Unwraps the AEK and seals its raw bytes for the new device's ephemeral
  * public key via ECDH. Only the ephemeral private key held by the new device
  * can open it.
+ *
+ * @param serverReceivedAt  Unix milliseconds — when the server first received
+ *   this join request. Use `Date.now()` at receipt time on the server, NOT
+ *   `new Date(joinRequest.createdAt).getTime()`. Passing the client-supplied
+ *   timestamp defeats TTL enforcement.
  */
 export async function authorizeJoin(
   joinRequest: JoinRequest,
   wrappedAEK: WrappedAEK,
   passphrase: string,
-  secretKey: Uint8Array
+  secretKey: Uint8Array,
+  serverReceivedAt: number
 ): Promise<SealedAEK> {
-  const age = Date.now() - new Date(joinRequest.createdAt).getTime()
+  const age = Date.now() - serverReceivedAt
   if (age > JOIN_TTL_MS) {
     throw new Error('authorizeJoin: join request has expired (older than 5 minutes)')
   }
@@ -228,7 +224,7 @@ export async function finalizeJoin(
   // way to zero them, but they are consumed immediately by digest() and importAesKey().
 
   const actualCommitment = await digest(rawAEK)
-  if (!buffersEqual(actualCommitment, aekCommitment)) {
+  if (!buffersEqual(new Uint8Array(actualCommitment), new Uint8Array(aekCommitment))) {
     throw new Error('finalizeJoin: AEK commitment mismatch — key may have been tampered with')
   }
 

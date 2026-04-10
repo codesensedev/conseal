@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { generateMnemonic, recoverWithMnemonic } from '../src/mnemonic'
+import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { seal, unseal } from '../src/aes'
 import { wrapKey, unwrapKey } from '../src/pbkdf2'
 
@@ -14,6 +15,14 @@ describe('generateMnemonic', () => {
     const a = generateMnemonic()
     const b = generateMnemonic()
     expect(a).not.toBe(b)
+  })
+
+  it('all words are in the BIP-39 English wordlist', () => {
+    const mnemonic = generateMnemonic()
+    const words = mnemonic.trim().split(/\s+/)
+    for (const word of words) {
+      expect(wordlist).toContain(word)
+    }
   })
 })
 

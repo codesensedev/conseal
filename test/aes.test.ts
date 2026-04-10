@@ -117,6 +117,22 @@ describe('seal / unseal', () => {
     const result = await unseal(key, ciphertext, iv, aad)
     expect(new TextDecoder().decode(result)).toBe('hello')
   })
+
+  it('passing undefined additionalData to unseal behaves identically to omitting it', async () => {
+    const key = await makeKey()
+    const plaintext = new TextEncoder().encode('hello').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(key, plaintext)
+    const result = await unseal(key, ciphertext, iv, undefined)
+    expect(new TextDecoder().decode(result)).toBe('hello')
+  })
+
+  it('passing undefined additionalData to seal produces ciphertext unsealed without additionalData', async () => {
+    const key = await makeKey()
+    const plaintext = new TextEncoder().encode('hello').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(key, plaintext, undefined)
+    const result = await unseal(key, ciphertext, iv)
+    expect(new TextDecoder().decode(result)).toBe('hello')
+  })
 })
 
 describe('generateAesKey', () => {

@@ -30,6 +30,12 @@ export function generateMnemonic(): string {
  * Derives a deterministic AES-256-GCM CryptoKey from a BIP-39 mnemonic.
  * Throws if the mnemonic is invalid or not in the BIP-39 word list.
  *
+ * The mnemonic's 32-byte entropy is passed through HKDF-SHA-256 with a
+ * domain-separation label before being imported as key material. This adds
+ * defense-in-depth: if the mnemonic came from a tool with weaker entropy, HKDF
+ * still produces a well-distributed key; it also ensures key-domain separation
+ * if the same entropy is ever used for another purpose.
+ *
  * Pass extractable: true when the key must be wrapped before storage —
  * e.g. when passing it to initCircle().
  */
@@ -40,9 +46,18 @@ export async function recoverWithMnemonic(mnemonic: string, extractable = false)
   // mnemonicToEntropy returns the raw entropy bytes — 32 bytes for a 24-word phrase
   // .slice() creates a copy backed by a plain ArrayBuffer (required by SubtleCrypto)
   const entropy = mnemonicToEntropy(mnemonic, wordlist).slice()
-  return crypto.subtle.importKey(
-    'raw',
-    entropy,
+  // Import entropy as HKDF key material, then derive the AES-GCM key.
+  // Empty salt is acceptable here because the IKM is already uniformly random
+  // (crypto.getRandomValues); the info label provides domain separation.
+  const hkdfKey = await crypto.subtle.importKey('raw', entropy, 'HKDF', false, ['deriveKey'])
+  return crypto.subtle.deriveKey(
+    {
+      name: 'HKDF',
+      hash: 'SHA-256',
+      salt: new Uint8Array(0),
+      info: new TextEncoder().encode('conseal-mnemonic-aek-v1'),
+    },
+    hkdfKey,
     { name: 'AES-GCM', length: 256 },
     extractable,
     ['encrypt', 'decrypt']

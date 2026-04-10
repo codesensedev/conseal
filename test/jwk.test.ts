@@ -43,4 +43,37 @@ describe('exportPublicKeyAsJwk / importPublicKeyFromJwk', () => {
     const valid = await crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, imported, signature, data)
     expect(valid).toBe(true)
   })
+
+  it('throws when x is missing from the JWK', async () => {
+    const { publicKey } = await crypto.subtle.generateKey(
+      { name: 'ECDH', namedCurve: 'P-256' },
+      true,
+      ['deriveKey']
+    )
+    const jwk = await exportPublicKeyAsJwk(publicKey)
+    const { x: _x, ...missingX } = jwk
+    await expect(importPublicKeyFromJwk(missingX, 'ECDH')).rejects.toThrow()
+  })
+
+  it('throws when y is missing from the JWK', async () => {
+    const { publicKey } = await crypto.subtle.generateKey(
+      { name: 'ECDH', namedCurve: 'P-256' },
+      true,
+      ['deriveKey']
+    )
+    const jwk = await exportPublicKeyAsJwk(publicKey)
+    const { y: _y, ...missingY } = jwk
+    await expect(importPublicKeyFromJwk(missingY, 'ECDH')).rejects.toThrow()
+  })
+
+  it('throws when crv is missing from the JWK', async () => {
+    const { publicKey } = await crypto.subtle.generateKey(
+      { name: 'ECDH', namedCurve: 'P-256' },
+      true,
+      ['deriveKey']
+    )
+    const jwk = await exportPublicKeyAsJwk(publicKey)
+    const { crv: _crv, ...missingCrv } = jwk
+    await expect(importPublicKeyFromJwk(missingCrv, 'ECDH')).rejects.toThrow()
+  })
 })

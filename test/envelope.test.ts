@@ -118,4 +118,13 @@ describe('encodeEnvelope / decodeEnvelope', () => {
     expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: '!!!', iv: 'YQ==', wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(/not valid base64/)
     expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: 'YQ==', iv: 'not base64!!', wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(/not valid base64/)
   })
+
+  it('decodeEnvelope silently ignores unknown fields', () => {
+    const base = { version: 1, ciphertext: 'YQ==', iv: 'YQ==', wrappedKey: 'YQ==', salt: 'YQ==' }
+    const withExtra = JSON.stringify({ ...base, extra: 'foo', unknown: 42 })
+    const decoded = decodeEnvelope(withExtra)
+    expect(decoded.version).toBe(1)
+    expect(decoded.ciphertext).toBeInstanceOf(ArrayBuffer)
+    expect(decoded.iv).toBeInstanceOf(Uint8Array)
+  })
 })

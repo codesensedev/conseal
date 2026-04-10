@@ -46,6 +46,9 @@ export async function sealMessage(
   recipientPublicKey: CryptoKey,
   plaintext: ArrayBuffer
 ): Promise<{ ciphertext: ArrayBuffer; iv: Uint8Array; ephemeralPublicKey: JsonWebKey }> {
+  if (recipientPublicKey.algorithm.name !== 'ECDH') {
+    throw new TypeError(`sealMessage: expected an ECDH public key, got ${recipientPublicKey.algorithm.name}`)
+  }
   // Fresh ephemeral key pair per message — private key never leaves this function
   const ephemeral = await crypto.subtle.generateKey(
     { name: 'ECDH', namedCurve: 'P-256' },
@@ -66,6 +69,9 @@ export async function unsealMessage(
   iv: Uint8Array,
   ephemeralPublicKey: JsonWebKey
 ): Promise<ArrayBuffer> {
+  if (recipientPrivateKey.algorithm.name !== 'ECDH') {
+    throw new TypeError(`unsealMessage: expected an ECDH private key, got ${recipientPrivateKey.algorithm.name}`)
+  }
   const ephemeralKey = await importPublicKeyFromJwk(ephemeralPublicKey, 'ECDH')
   const sharedKey = await deriveSharedKey(recipientPrivateKey, ephemeralKey)
   return crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource, tagLength: 128 }, sharedKey, ciphertext)

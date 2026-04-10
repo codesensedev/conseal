@@ -26,6 +26,9 @@ export async function generateECDSAKeyPair(): Promise<CryptoKeyPair> {
 
 /** Signs data with the sender's ECDSA private key. */
 export async function sign(privateKey: CryptoKey, data: ArrayBuffer): Promise<ArrayBuffer> {
+  if (privateKey.algorithm.name !== 'ECDSA') {
+    throw new TypeError(`sign: expected an ECDSA private key, got ${privateKey.algorithm.name}`)
+  }
   return crypto.subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, privateKey, data)
 }
 
@@ -35,5 +38,8 @@ export async function verify(
   signature: ArrayBuffer,
   data: ArrayBuffer
 ): Promise<boolean> {
+  if (publicKey.algorithm.name !== 'ECDSA') {
+    throw new TypeError(`verify: expected an ECDSA public key, got ${publicKey.algorithm.name}`)
+  }
   return crypto.subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, publicKey, signature, data)
 }

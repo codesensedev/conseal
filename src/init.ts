@@ -14,10 +14,10 @@
  */
 
 import { unwrapKey } from './pbkdf2'
-import { saveCryptoKey } from './storage'
+import { saveCryptoKey, AEK_KEY_ID } from './storage'
 
-/** The IndexedDB key id under which the AEK is stored after init(). */
-export const AEK_KEY_ID = 'aek'
+/** The IndexedDB key id under which the AEK is stored after init(). Re-exported from storage. */
+export { AEK_KEY_ID }
 
 /**
  * Unwraps the AEK with the given passphrase (and optional Secret Key) and
