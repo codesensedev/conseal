@@ -15,12 +15,15 @@
  * Dependency: @scure/bip39 (browser-compatible, audited)
  */
 
-import { generateMnemonic as bip39Generate, mnemonicToEntropy, validateMnemonic } from '@scure/bip39'
+import { entropyToMnemonic, mnemonicToEntropy, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 
 /** Generates a fresh 24-word BIP-39 mnemonic (256 bits of entropy). */
 export function generateMnemonic(): string {
-  return bip39Generate(wordlist, 256)
+  // Use the browser's crypto.getRandomValues directly instead of @noble/hashes randomBytes
+  // (which accesses globalThis.crypto and triggers false "network access" warnings on socket.dev)
+  const entropy = crypto.getRandomValues(new Uint8Array(32)) // 256 bits → 24 words
+  return entropyToMnemonic(entropy, wordlist)
 }
 
 /**
