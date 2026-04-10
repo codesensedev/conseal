@@ -1,6 +1,8 @@
 .conseal
 node_modules/
 dist/
+docs/assets/conseal.js
+docs/assets/bip39.js
 var/
 .vitest-attachments
 test/__screenshots__

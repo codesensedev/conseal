@@ -35,4 +35,25 @@ export default defineConfig([
     outExtension: () => ({ js: '.min.js' }),
     banner: { js: banner },
   },
+  // ── IIFE builds for GitHub Pages demo ──────────────────────────────────
+  {
+    entry: { conseal: 'src/index.ts' },
+    format: ['iife'],
+    outDir: 'docs/assets',
+    globalName: 'conseal',
+    noExternal: [/.*/],
+    minify: true,
+    dts: false,
+    outExtension: () => ({ js: '.js' }),
+  },
+  {
+    entry: { bip39: 'src/bip39-bundle.ts' },
+    format: ['iife'],
+    outDir: 'docs/assets',
+    globalName: 'bip39',
+    noExternal: [/.*/],
+    minify: true,
+    dts: false,
+    outExtension: () => ({ js: '.js' }),
+  },
 ])
