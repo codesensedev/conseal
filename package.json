@@ -3,6 +3,10 @@
   "version": "0.0.0",
   "license": "AGPL-3.0-only",
   "homepage": "https://conseal.dev",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/codesensedev/conseal"
+  },
   "description": "Browser-side zero-knowledge cryptography library using SubtleCrypto.",
   "type": "module",
   "main": "./dist/index.js",
