@@ -40,6 +40,13 @@ describe('recoverWithMnemonic', () => {
     await expect(recoverWithMnemonic('not valid words at all')).rejects.toThrow()
   })
 
+  it('throws when words are valid BIP-39 words but the checksum is wrong', async () => {
+    // First 24 words of the BIP-39 wordlist — all valid words, but their
+    // combination does not satisfy the BIP-39 checksum.
+    const badChecksum = 'abandon ability able about above absent absorb abstract absurd abuse access accident account accuse achieve acid acoustic acquire across act action actor actress actual'
+    await expect(recoverWithMnemonic(badChecksum)).rejects.toThrow()
+  })
+
   it('round-trip: seal with recovered key, unseal with second recovered key (Conseal API)', async () => {
     const mnemonic = generateMnemonic()
     const aek = await recoverWithMnemonic(mnemonic)

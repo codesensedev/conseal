@@ -103,6 +103,17 @@ describe('encodeEnvelope / decodeEnvelope', () => {
     expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: 'YQ==', iv: null, wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(TypeError)
   })
 
+  it('round-trips an envelope with a large payload (>1 MB)', async () => {
+    const plaintext = new Uint8Array(1_200_000).fill(0x42).buffer as ArrayBuffer
+    const sealed = await sealEnvelope(plaintext, 'pass')
+    const json = encodeEnvelope(sealed)
+    const decoded = decodeEnvelope(json)
+    const result = await unsealEnvelope(decoded, 'pass')
+    expect(result.byteLength).toBe(plaintext.byteLength)
+    expect(new Uint8Array(result)[0]).toBe(0x42)
+    expect(new Uint8Array(result)[1_199_999]).toBe(0x42)
+  }, 30_000)
+
   it('decodeEnvelope throws on invalid base64 content', () => {
     expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: '!!!', iv: 'YQ==', wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(/not valid base64/)
     expect(() => decodeEnvelope(JSON.stringify({ version: 1, ciphertext: 'YQ==', iv: 'not base64!!', wrappedKey: 'YQ==', salt: 'YQ==' }))).toThrow(/not valid base64/)

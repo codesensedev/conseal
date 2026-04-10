@@ -91,6 +91,8 @@ export async function wrapKey(
   const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH))
   const wrappingKey = await deriveWrappingKey(effective, salt)
   const raw = await crypto.subtle.exportKey('raw', key)
+  // Raw key bytes live briefly in memory here; JavaScript provides no reliable
+  // way to zero them, but they are consumed immediately by encrypt() and never returned.
   const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
   const ciphertext = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, wrappingKey, raw)
   // Prepend the IV so unwrapKey needs no extra parameter
@@ -145,6 +147,13 @@ export async function rekey(
  * @param wrappedKey   - the currently wrapped AEK
  * @param salt         - the salt used when the AEK was wrapped
  */
+function uint8ArraysEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false
+  let result = 0
+  for (let i = 0; i < a.length; i++) result |= (a[i] as number) ^ (b[i] as number)
+  return result === 0
+}
+
 export async function rekeySecretKey(
   passphrase: string,
   oldSecretKey: Uint8Array,
@@ -152,10 +161,7 @@ export async function rekeySecretKey(
   wrappedKey: ArrayBuffer,
   salt: Uint8Array
 ): Promise<{ wrappedKey: ArrayBuffer; salt: Uint8Array }> {
-  if (
-    oldSecretKey.length === newSecretKey.length &&
-    oldSecretKey.every((b, i) => b === newSecretKey[i])
-  ) {
+  if (uint8ArraysEqual(oldSecretKey, newSecretKey)) {
     throw new Error('rekeySecretKey: oldSecretKey and newSecretKey must be different')
   }
   const effectiveOld = await resolvePassphrase(passphrase, oldSecretKey)

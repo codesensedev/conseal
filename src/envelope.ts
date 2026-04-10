@@ -48,7 +48,13 @@ export async function unsealEnvelope(
   return unseal(dek, envelope.ciphertext, envelope.iv)
 }
 
-/** The fields produced by sealEnvelope(), ready for JSON serialisation. */
+/**
+ * The in-memory representation produced by sealEnvelope().
+ *
+ * **Not directly JSON-serialisable.** ArrayBuffer and Uint8Array fields are
+ * silently lost or corrupted by JSON.stringify. Use encodeEnvelope() to produce
+ * a JSON string and decodeEnvelope() to reconstruct this type from one.
+ */
 export interface SealedEnvelope {
   /** Format version — always 1 for envelopes produced by this library. */
   version: 1

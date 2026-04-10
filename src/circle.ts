@@ -46,7 +46,14 @@ export interface WrappedAEK {
 export interface JoinRequest {
   deviceId: string
   ephemeralPublicKey: JsonWebKey
-  createdAt: string // ISO 8601
+  /**
+   * ISO 8601 timestamp set by the joining device. `authorizeJoin` uses this to
+   * reject stale requests, but the check is only as trustworthy as the device
+   * that set the value. Callers should independently validate request freshness
+   * server-side (e.g. record when the backend first received the request and
+   * reject if that server-stamped age exceeds the TTL).
+   */
+  createdAt: string
   deviceMeta?: { name?: string; platform?: string }
 }
 
@@ -111,6 +118,8 @@ export async function initCircle(
 ): Promise<{ wrappedAEK: WrappedAEK; aekCommitment: ArrayBuffer; deviceId: string }> {
   const aek = await recoverWithMnemonic(mnemonic, true) // extractable: true — must be wrappable
   const rawAEK = await crypto.subtle.exportKey('raw', aek)
+  // Raw AEK bytes live briefly in memory here; JavaScript provides no reliable
+  // way to zero them, but they are consumed immediately by digest() and wrapKey().
   const aekCommitment = await digest(rawAEK)
   const { wrappedKey, salt } = await wrapKey(passphrase, aek, secretKey)
   const deviceId = crypto.randomUUID()
@@ -157,6 +166,13 @@ export async function createJoinRequest(
  * it matches the code on the new device before calling this function —
  * calling without confirmation bypasses the primary MITM defence.
  *
+ * **TTL caveat:** the age check relies on `joinRequest.createdAt`, which is
+ * set by the joining device. A compromised or malicious device can forge this
+ * timestamp to bypass the 5-minute window. For real TTL enforcement, callers
+ * must independently timestamp requests when they first arrive at the server
+ * and reject them based on that server-stamped time before passing the request
+ * to this function.
+ *
  * Unwraps the AEK and seals its raw bytes for the new device's ephemeral
  * public key via ECDH. Only the ephemeral private key held by the new device
  * can open it.
@@ -175,6 +191,8 @@ export async function authorizeJoin(
   // Unwrap extractable so raw bytes can be transferred via ECDH
   const aek = await unwrapKey(passphrase, wrappedAEK.wrappedKey, wrappedAEK.salt, secretKey, true)
   const rawAEK = await crypto.subtle.exportKey('raw', aek)
+  // Raw AEK bytes live briefly in memory here; JavaScript provides no reliable
+  // way to zero them, but they are consumed immediately by sealMessage() and never returned.
 
   const recipientPublicKey = await importPublicKeyFromJwk(joinRequest.ephemeralPublicKey, 'ECDH')
   const { ciphertext, iv, ephemeralPublicKey } = await sealMessage(recipientPublicKey, rawAEK)
@@ -206,6 +224,8 @@ export async function finalizeJoin(
     sealedAEK.iv,
     sealedAEK.ephemeralPublicKey
   )
+  // Raw AEK bytes live briefly in memory here; JavaScript provides no reliable
+  // way to zero them, but they are consumed immediately by digest() and importAesKey().
 
   const actualCommitment = await digest(rawAEK)
   if (!buffersEqual(actualCommitment, aekCommitment)) {

@@ -14,13 +14,15 @@
  * Callers convert File objects before passing in: await file.arrayBuffer()
  */
 
+const IV_LENGTH = 12 // 96-bit IV — required for AES-GCM
+
 /** Encrypts plaintext with AES-256-GCM. Returns ciphertext (with auth tag appended) and IV. */
 export async function seal(
   key: CryptoKey,
   plaintext: ArrayBuffer,
   additionalData?: ArrayBuffer | Uint8Array
 ): Promise<{ ciphertext: ArrayBuffer; iv: Uint8Array }> {
-  const iv = crypto.getRandomValues(new Uint8Array(12)) // 96-bit IV — required for AES-GCM
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH))
   const algorithm: AesGcmParams = { name: 'AES-GCM', iv: iv as BufferSource, tagLength: 128 }
   if (additionalData !== undefined) algorithm.additionalData = additionalData as BufferSource
   const ciphertext = await crypto.subtle.encrypt(algorithm, key, plaintext)
@@ -34,8 +36,8 @@ export async function unseal(
   iv: Uint8Array,
   additionalData?: ArrayBuffer | Uint8Array
 ): Promise<ArrayBuffer> {
-  if (iv.byteLength !== 12) {
-    throw new TypeError(`AES-GCM IV must be 12 bytes (96 bits), got ${iv.byteLength}`)
+  if (iv.byteLength !== IV_LENGTH) {
+    throw new TypeError(`AES-GCM IV must be ${IV_LENGTH} bytes (96 bits), got ${iv.byteLength}`)
   }
   const algorithm: AesGcmParams = { name: 'AES-GCM', iv: iv as BufferSource, tagLength: 128 }
   if (additionalData !== undefined) algorithm.additionalData = additionalData as BufferSource
@@ -59,6 +61,9 @@ export async function generateAesKey(extractable = false): Promise<CryptoKey> {
  * Pass extractable: true when the key must be wrapped before storage (e.g. via wrapKey).
  */
 export async function importAesKey(raw: ArrayBuffer | Uint8Array, extractable = false): Promise<CryptoKey> {
+  if (raw.byteLength !== 32) {
+    throw new TypeError(`importAesKey: key must be 32 bytes (256 bits), got ${raw.byteLength}`)
+  }
   return crypto.subtle.importKey(
     'raw',
     raw as BufferSource,

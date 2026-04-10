@@ -46,4 +46,22 @@ describe('sealMessage / unsealMessage', () => {
       unsealMessage(attacker.privateKey, sealed.ciphertext, sealed.iv, sealed.ephemeralPublicKey)
     ).rejects.toThrow()
   })
+
+  it('handles empty plaintext', async () => {
+    const recipient = await generateECDHKeyPair()
+    const plaintext = new ArrayBuffer(0)
+    const sealed = await sealMessage(recipient.publicKey, plaintext)
+    const result = await unsealMessage(recipient.privateKey, sealed.ciphertext, sealed.iv, sealed.ephemeralPublicKey)
+    expect(result.byteLength).toBe(0)
+  })
+
+  it('throws when recipient public key uses a mismatched curve (P-384 instead of P-256)', async () => {
+    const p384KeyPair = await crypto.subtle.generateKey(
+      { name: 'ECDH', namedCurve: 'P-384' },
+      true,
+      ['deriveKey']
+    )
+    const plaintext = new TextEncoder().encode('test').buffer as ArrayBuffer
+    await expect(sealMessage(p384KeyPair.publicKey, plaintext)).rejects.toThrow()
+  })
 })

@@ -68,6 +68,34 @@ describe('init', () => {
     await expect(init(wrappedKey, salt, 'my-passphrase', wrongSk)).rejects.toThrow()
   }, 15_000)
 
+  it('second call overwrites the first AEK', async () => {
+    const aek1 = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    )
+    const aek2 = await crypto.subtle.generateKey(
+      { name: 'AES-GCM', length: 256 },
+      true,
+      ['encrypt', 'decrypt']
+    )
+
+    // Seal data with aek1
+    const plaintext = new TextEncoder().encode('from aek1').buffer as ArrayBuffer
+    const { ciphertext, iv } = await seal(aek1, plaintext)
+
+    const { wrappedKey: wk1, salt: s1 } = await wrapKey('pass1', aek1)
+    await init(wk1, s1, 'pass1')
+
+    // Call init a second time with a different AEK
+    const { wrappedKey: wk2, salt: s2 } = await wrapKey('pass2', aek2)
+    await init(wk2, s2, 'pass2')
+
+    // The stored key is now aek2 — decrypting aek1-ciphertext must fail
+    const stored = await loadCryptoKey(AEK_KEY_ID)
+    await expect(unseal(stored!, ciphertext, iv)).rejects.toThrow()
+  }, 25_000)
+
   it('end-to-end with secret key: seal data, init on new device, unseal data', async () => {
     const secretKey = generateSecretKey()
     const aek = await generateAesKey(true)
