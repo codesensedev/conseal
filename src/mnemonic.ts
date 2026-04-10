@@ -16,7 +16,7 @@
  */
 
 import { entropyToMnemonic, mnemonicToEntropy, validateMnemonic } from '@scure/bip39'
-import { wordlist } from './wordlists/english'
+import { wordlist } from '@scure/bip39/wordlists/english.js'
 
 /** Generates a fresh 24-word BIP-39 mnemonic (256 bits of entropy). */
 export function generateMnemonic(): string {
